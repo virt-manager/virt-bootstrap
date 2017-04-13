@@ -55,8 +55,9 @@ class DockerSource:
         self.username = username
         self.password = password
         self.insecure = insecure
-        if self.image.startswith('/'):
-            self.image = self.image[1:]
+        if self.image and not self.image.startswith('/'):
+            self.image = '/' + self.image
+        self.url = "docker://" + self.registry + self.image
 
     def unpack(self, dest):
         tmpDest = tempfile.mkdtemp('virt-bootstrap')
@@ -67,7 +68,7 @@ class DockerSource:
             #       they should place the certificates in the system
             #       folders for broader enablement
             cmd = ["skopeo", "copy",
-                   "docker://%s/%s" % (self.registry, self.image),
+                   self.url,
                    "dir:%s" % tmpDest]
             if self.insecure:
                 cmd.append('--src-tls-verify=false')
