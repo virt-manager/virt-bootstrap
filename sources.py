@@ -87,7 +87,7 @@ class DockerSource:
             for layer in manifest['layers']:
                 sum_type, sum_value = layer['digest'].split(':')
                 layer_file = "%s/%s.tar" % (tmpDest, sum_value)
-                print 'layer_file: (%s) %s' % (sum_type, layer_file)
+                print('layer_file: (%s) %s' % (sum_type, layer_file))
 
                 # Verify the checksum
                 if not checksum(layer_file, sum_type, sum_value):
@@ -101,4 +101,3 @@ class DockerSource:
             raise
 
         shutil.rmtree(tmpDest)
-
