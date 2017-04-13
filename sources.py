@@ -68,7 +68,7 @@ class DockerSource:
             #       folders for broader enablement
             cmd = ["skopeo", "copy",
                    "docker://%s/%s" % (self.registry, self.image),
-                   "dir:/%s" % tmpDest]
+                   "dir:%s" % tmpDest]
             if self.insecure:
                 cmd.append('--src-tls-verify=false')
             if self.username:
