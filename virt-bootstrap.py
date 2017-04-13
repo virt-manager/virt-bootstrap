@@ -66,7 +66,8 @@ def set_root_password(rootfs, password):
 
 def bootstrap(args):
     source = get_source(args)
-    os.makedirs(args.dest)
+    if not os.path.exists(args.dest):
+        os.makedirs(args.dest)
     source.unpack(args.dest)
 
     if args.root_password is not None:
