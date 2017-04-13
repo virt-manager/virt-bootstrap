@@ -36,7 +36,6 @@ gettext.textdomain("virt-bootstrap")
 try:
     gettext.install("virt-bootstrap",
                     localedir="/usr/share/locale",
-                    unicode=False,
                     codeset = 'utf-8')
 except IOError:
     import __builtin__
