@@ -107,9 +107,9 @@ Example supported URI formats:
         bootstrap(args)
 
         sys.exit(0)
-    except KeyboardInterrupt, e:
+    except KeyboardInterrupt as e:
         sys.exit(0)
-    except ValueError, e:
+    except ValueError as e:
         for line in e:
             for l in line:
                 sys.stderr.write("%s: %s\n" % (sys.argv[0], l))
