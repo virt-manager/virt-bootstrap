@@ -39,14 +39,14 @@ def checksum(path, sum_type, sum_expected):
 
 
 class FileSource:
-    def __init__(self, url, insecure):
+    def __init__(self, url, username, password, insecure):
         self.path = url.path
 
-    def unpack(dest):
+    def unpack(self, dest):
         # We assume tar is intelligent enough to find out
         # the compression type to use and to strip leading '/',
         # not sure if this is safe enough
-        subprocess.check_call(["tar", "-C", dest, "xf", self.path])
+        subprocess.check_call(["tar", "xf", self.path, "-C", dest])
 
 class DockerSource:
     def __init__(self, url, username, password, insecure):
