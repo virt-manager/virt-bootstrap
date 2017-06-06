@@ -24,6 +24,15 @@ import shutil
 import subprocess
 import tempfile
 import getpass
+import os
+
+
+# default_image_dir - Path where Docker images (tarballs) will be stored
+if os.geteuid() == 0:
+    default_image_dir = "/var/lib/virt-bootstrap/docker_images"
+else:
+    default_image_dir = \
+        os.environ['HOME'] + "/.local/share/virt-bootstrap/docker_images"
 
 
 def checksum(path, sum_type, sum_expected):
@@ -40,7 +49,7 @@ def checksum(path, sum_type, sum_expected):
 
 
 class FileSource:
-    def __init__(self, url, username, password, insecure):
+    def __init__(self, url, *args):
         self.path = url.path
 
     def unpack(self, dest):
@@ -51,18 +60,26 @@ class FileSource:
 
 
 class DockerSource:
-    def __init__(self, url, username, password, insecure):
+    def __init__(self, url, username, password, insecure, no_cache):
         self.registry = url.netloc
         self.image = url.path
         self.username = username
         self.password = password
         self.insecure = insecure
+        self.no_cache = no_cache
         if self.image and not self.image.startswith('/'):
             self.image = '/' + self.image
         self.url = "docker://" + self.registry + self.image
 
     def unpack(self, dest):
-        tmpDest = tempfile.mkdtemp('virt-bootstrap')
+
+        if self.no_cache:
+            tmp_dest = tempfile.mkdtemp('virt-bootstrap')
+            images_dir = tmp_dest
+        else:
+            if not os.path.exists(default_image_dir):
+                os.makedirs(default_image_dir)
+            images_dir = default_image_dir
 
         try:
             # Run skopeo copy into a tmp folder
@@ -71,7 +88,7 @@ class DockerSource:
             #       folders for broader enablement
             cmd = ["skopeo", "copy",
                    self.url,
-                   "dir:%s" % tmpDest]
+                   "dir:%s" % images_dir]
             if self.insecure:
                 cmd.append('--src-tls-verify=false')
             if self.username:
@@ -83,13 +100,13 @@ class DockerSource:
             subprocess.check_call(cmd)
 
             # Get the layers list from the manifest
-            mf = open("%s/manifest.json" % tmpDest, "r")
+            mf = open("%s/manifest.json" % images_dir, "r")
             manifest = json.load(mf)
 
             # FIXME We suppose the layers are ordered, is this true?
             for layer in manifest['layers']:
                 sum_type, sum_value = layer['digest'].split(':')
-                layer_file = "%s/%s.tar" % (tmpDest, sum_value)
+                layer_file = "%s/%s.tar" % (images_dir, sum_value)
                 print('layer_file: (%s) %s' % (sum_type, layer_file))
 
                 # Verify the checksum
@@ -100,7 +117,9 @@ class DockerSource:
                 subprocess.check_call(["tar", "xf", layer_file, "-C", dest])
 
         except Exception:
-            shutil.rmtree(tmpDest)
             raise
 
-        shutil.rmtree(tmpDest)
+        finally:
+            # Clean up
+            if self.no_cache:
+                shutil.rmtree(tmp_dest)

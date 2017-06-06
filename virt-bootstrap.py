@@ -53,7 +53,11 @@ def get_source(args):
     try:
         class_name = "%sSource" % scheme.capitalize()
         clazz = getattr(sources, class_name)
-        return clazz(url, args.username, args.password, args.not_secure)
+        return clazz(url,
+                     args.username,
+                     args.password,
+                     args.not_secure,
+                     args.no_cache)
     except Exception:
         raise Exception("Invalid image URI scheme: '%s'" % url.scheme)
 
@@ -106,6 +110,8 @@ def main():
                                "to connect to the source registry"))
     parser.add_argument("--root-password", default=None,
                         help=_("Root password to set in the created rootfs"))
+    parser.add_argument("--no-cache", action="store_true",
+                        help=_("Do not store downloaded Docker images"))
     # TODO add --format [qcow2,dir] parameter
     # TODO add UID / GID mapping parameters
 
