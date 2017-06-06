@@ -21,16 +21,18 @@
 import hashlib
 import json
 import shutil
-import subprocess
 import tempfile
 import getpass
 import os
-
+import logging
+from subprocess import call, check_call
 
 # default_image_dir - Path where Docker images (tarballs) will be stored
 if os.geteuid() == 0:
+    virt_sandbox_connection = "lxc:///"
     default_image_dir = "/var/lib/virt-bootstrap/docker_images"
 else:
+    virt_sandbox_connection = "qemu:///session"
     default_image_dir = \
         os.environ['HOME'] + "/.local/share/virt-bootstrap/docker_images"
 
@@ -48,15 +50,31 @@ def checksum(path, sum_type, sum_expected):
         return False
 
 
+def safe_untar(src, dest):
+    # Extract tarball in LXC container for safety
+    virt_sandbox = ['virt-sandbox',
+                    '-c', virt_sandbox_connection,
+                    '-m', 'host-bind:/mnt=' + dest]  # Bind destination folder
+
+    # Compression type is auto detected from tar
+    # Exclude files under /dev to avoid "Cannot mknod: Operation not permitted"
+    params = ['--', '/bin/tar', 'xf', src, '-C', '/mnt', '--exclude', 'dev/*']
+    if call(virt_sandbox + params) != 0:
+        logging.error(_('virt-sandbox exit with non-zero code. '
+                        'Please check if "libvirtd" is running.'))
+
+
 class FileSource:
     def __init__(self, url, *args):
         self.path = url.path
 
     def unpack(self, dest):
-        # We assume tar is intelligent enough to find out
-        # the compression type to use and to strip leading '/',
-        # not sure if this is safe enough
-        subprocess.check_call(["tar", "xf", self.path, "-C", dest])
+        '''
+        Safely extract root filesystem from tarball
+
+        @param dest: Directory path where the files to be extraced
+        '''
+        safe_untar(self.path, dest)
 
 
 class DockerSource:
@@ -97,13 +115,15 @@ class DockerSource:
                 cmd.append('--src-creds=%s:%s' % (self.username,
                                                   self.password))
 
-            subprocess.check_call(cmd)
+            check_call(cmd)
 
             # Get the layers list from the manifest
             mf = open("%s/manifest.json" % images_dir, "r")
             manifest = json.load(mf)
 
-            # FIXME We suppose the layers are ordered, is this true?
+            # Layers are in order - root layer first
+            # Reference:
+            # https://github.com/containers/image/blob/master/image/oci.go#L100
             for layer in manifest['layers']:
                 sum_type, sum_value = layer['digest'].split(':')
                 layer_file = "%s/%s.tar" % (images_dir, sum_value)
@@ -114,7 +134,7 @@ class DockerSource:
                     raise Exception("Digest not matching: " + layer['digest'])
 
                 # untar layer into dest
-                subprocess.check_call(["tar", "xf", layer_file, "-C", dest])
+                safe_untar(layer_file, dest)
 
         except Exception:
             raise
