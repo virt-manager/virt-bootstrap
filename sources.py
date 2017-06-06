@@ -25,6 +25,7 @@ import subprocess
 import tempfile
 import getpass
 
+
 def checksum(path, sum_type, sum_expected):
     algorithm = getattr(hashlib, sum_type)
     try:
@@ -34,7 +35,7 @@ def checksum(path, sum_type, sum_expected):
 
         actual = algorithm(content).hexdigest()
         return actual == sum_expected
-    except:
+    except Exception:
         return False
 
 
@@ -47,6 +48,7 @@ class FileSource:
         # the compression type to use and to strip leading '/',
         # not sure if this is safe enough
         subprocess.check_call(["tar", "xf", self.path, "-C", dest])
+
 
 class DockerSource:
     def __init__(self, url, username, password, insecure):
@@ -75,8 +77,8 @@ class DockerSource:
             if self.username:
                 if not self.password:
                     self.password = getpass.getpass()
-                cmd.append('--src-creds=%s:%s' % (self.username, self.password))
-
+                cmd.append('--src-creds=%s:%s' % (self.username,
+                                                  self.password))
 
             subprocess.check_call(cmd)
 
@@ -92,12 +94,12 @@ class DockerSource:
 
                 # Verify the checksum
                 if not checksum(layer_file, sum_type, sum_value):
-                    raise Exception("Digest not matching: %s" % layer['digest'])
+                    raise Exception("Digest not matching: " + layer['digest'])
 
                 # untar layer into dest
                 subprocess.check_call(["tar", "xf", layer_file, "-C", dest])
 
-        except:
+        except Exception:
             shutil.rmtree(tmpDest)
             raise
 

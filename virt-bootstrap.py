@@ -20,9 +20,10 @@
 
 import argparse
 import gettext
-import subprocess
 import sys
 import os
+from textwrap import dedent
+from subprocess import CalledProcessError, Popen, PIPE
 try:
     from urlparse import urlparse
 except ImportError:
@@ -36,7 +37,7 @@ gettext.textdomain("virt-bootstrap")
 try:
     gettext.install("virt-bootstrap",
                     localedir="/usr/share/locale",
-                    codeset = 'utf-8')
+                    codeset='utf-8')
 except IOError:
     import __builtin__
     __builtin__.__dict__['_'] = unicode
@@ -56,13 +57,15 @@ def get_source(args):
     except Exception:
         raise Exception("Invalid image URI scheme: '%s'" % url.scheme)
 
+
 def set_root_password(rootfs, password):
     users = 'root:%s' % password
     args = ['chpasswd', '-R', rootfs]
-    p = subprocess.Popen(args, stdin=subprocess.PIPE)
+    p = Popen(args, stdin=PIPE)
     p.communicate(input=users)
     if p.returncode != 0:
-        raise subprocess.CalledProcessError(p.returncode, cmd=args, output=None)
+        raise CalledProcessError(p.returncode, cmd=args, output=None)
+
 
 def bootstrap(args):
     source = get_source(args)
@@ -73,28 +76,34 @@ def bootstrap(args):
     if args.root_password is not None:
         set_root_password(args.dest, args.root_password)
 
+
 def main():
-    parser = argparse.ArgumentParser(description=_("Container bootstrapping tool"),
-                                     epilog=_("""
+    parser = argparse.ArgumentParser(
+        description=_("Container bootstrapping tool"),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=dedent(_('''
+                            Example supported URI formats:
+                            ----------------------------------------
+                              docker://ubuntu:latest
+                              docker://docker.io/fedora
+                              docker://privateregistry:5000/image
+                              file:///path/to/local/rootfs.tar.xz
+                            ----------------------------------------
 
-Example supported URI formats:
-
-  docker:///ubuntu?tag=15.04
-  docker://username:password@index.docker.io/private/image
-  docker://privateregistry:5000/image
-  virt-builder:///opensuse-42.1
-  file:///path/to/local/rootfs.tar.xz
-"""))
+                        ''')))
     parser.add_argument("uri",
-                        help=_("Prepare and start a container from a given image"))
+                        help=_("URI of container image"))
     parser.add_argument("dest",
-                        help=_("Destination folder of the root file system to be created"))
+                        help=_("Destination folder"
+                               "where image files to be extracted"))
     parser.add_argument("--not-secure", action='store_true',
                         help=_("Ignore HTTPS errors"))
-    parser.add_argument("-u","--username", default=None,
-                        help=_("Username to use to connect to the source"))
-    parser.add_argument("-p","--password", default=None,
-                        help=_("Password to use to connect to the source"))
+    parser.add_argument("-u", "--username", default=None,
+                        help=_("Username to use"
+                               "to connect to the source registry"))
+    parser.add_argument("-p", "--password", default=None,
+                        help=_("Password to use"
+                               "to connect to the source registry"))
     parser.add_argument("--root-password", default=None,
                         help=_("Root password to set in the created rootfs"))
     # TODO add --format [qcow2,dir] parameter
@@ -116,5 +125,6 @@ Example supported URI formats:
         sys.stderr.flush()
         sys.exit(1)
 
+
 if __name__ == '__main__':
-   sys.exit(main())
+    sys.exit(main())
