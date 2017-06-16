@@ -1,8 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8; -*-
 
+"""
+Setup script used for building, testing, and installing modules
+based on setuptools.
+"""
+
 import codecs
 import os
+import sys
+from subprocess import call
+from setuptools import Command
 from setuptools import setup
 
 
@@ -13,6 +21,52 @@ def read(fname):
     path = os.path.join(os.path.dirname(__file__), fname)
     with codecs.open(path, encoding='utf-8') as fobj:
         return fobj.read()
+
+
+class CheckPylint(Command):
+    """
+    Check python source files with pylint and pycodestyle.
+    """
+
+    user_options = [('errors-only', 'e', 'only report errors')]
+    description = "Check code using pylint and pycodestyle"
+
+    def initialize_options(self):
+        """
+        Initialize the options to default values.
+        """
+        # pylint: disable=attribute-defined-outside-init
+        self.errors_only = False
+
+    def finalize_options(self):
+        """
+        Check final option values.
+        """
+        pass
+
+    def run(self):
+        """
+        Call pycodestyle and pylint here.
+        """
+
+        res = 0
+        files = ' '.join(["setup.py", "src/virtBootstrap/*.py"])
+        output_format = "colorized" if sys.stdout.isatty() else "text"
+
+        print(">>> Running pycodestyle ...")
+        cmd = "pycodestyle "
+        if (call(cmd + files, shell=True) != 0):
+            res = 1
+
+        print(">>> Running pylint ...")
+        args = ""
+        if self.errors_only:
+            args = "-E"
+        cmd = "pylint %s --output-format=%s " % (args, format(output_format))
+        if (call(cmd + files, shell=True) != 0):
+            res = 1
+
+        sys.exit(res)
 
 
 setup(
@@ -53,5 +107,15 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6'
-    ]
+
+    ],
+    cmdclass={
+        'pylint': CheckPylint
+    },
+    extras_require={
+        'dev': [
+            'pylint',
+            'pycodestyle'
+        ]
+    }
 )

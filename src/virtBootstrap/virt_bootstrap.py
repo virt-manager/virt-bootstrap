@@ -16,6 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Main executable file which process input arguments
+and calls corresponding methods on appropriate object.
+"""
+
 import argparse
 import gettext
 import sys
@@ -27,7 +32,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-import sources
+from virtBootstrap import sources
 
 
 gettext.bindtextdomain("virt-bootstrap", "/usr/share/locale")
@@ -37,11 +42,19 @@ try:
                     localedir="/usr/share/locale",
                     codeset='utf-8')
 except IOError:
-    import __builtin__
-    __builtin__.__dict__['_'] = unicode
+    try:
+        import __builtin__
+        # pylint: disable=undefined-variable
+        __builtin__.__dict__['_'] = unicode
+    except ImportError:
+        import builtin
+        builtin.__dict__['_'] = str
 
 
 def get_source(args):
+    """
+    Get object which match the source type
+    """
     url = urlparse(args.uri)
     scheme = url.scheme
 
@@ -51,26 +64,27 @@ def get_source(args):
     try:
         class_name = "%sSource" % scheme.capitalize()
         clazz = getattr(sources, class_name)
-        return clazz(url,
-                     args.username,
-                     args.password,
-                     args.format,
-                     args.not_secure,
-                     args.no_cache)
+        return clazz(url, args)
     except Exception:
         raise Exception("Invalid image URI scheme: '%s'" % url.scheme)
 
 
 def set_root_password(rootfs, password):
+    """
+    Set password on the root user in rootfs
+    """
     users = 'root:%s' % password
     args = ['chpasswd', '-R', rootfs]
-    p = Popen(args, stdin=PIPE)
-    p.communicate(input=users)
-    if p.returncode != 0:
-        raise CalledProcessError(p.returncode, cmd=args, output=None)
+    chpasswd = Popen(args, stdin=PIPE)
+    chpasswd.communicate(input=users)
+    if chpasswd.returncode != 0:
+        raise CalledProcessError(chpasswd.returncode, cmd=args, output=None)
 
 
 def bootstrap(args):
+    """
+    Get source object and call unpack method
+    """
     source = get_source(args)
     if not os.path.exists(args.dest):
         os.makedirs(args.dest)
@@ -123,12 +137,10 @@ def main():
         bootstrap(args)
 
         sys.exit(0)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         sys.exit(0)
-    except ValueError as e:
-        for line in e:
-            for l in line:
-                sys.stderr.write("%s: %s\n" % (sys.argv[0], l))
+    except ValueError as err:
+        sys.stderr.write("%s: %s\n" % (sys.argv[0], err))
         sys.stderr.flush()
         sys.exit(1)
 

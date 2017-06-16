@@ -15,6 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Class definitions which process container image or
+archive from source and unpack them in destination directory.
+"""
+
 import hashlib
 import json
 import shutil
@@ -26,22 +31,24 @@ from subprocess import call, CalledProcessError, PIPE, Popen
 
 # Default virtual size of qcow2 image
 DEF_QCOW2_SIZE = '5G'
-# default_image_dir - Path where Docker images (tarballs) will be stored
 if os.geteuid() == 0:
-    virt_sandbox_connection = "lxc:///"
-    default_image_dir = "/var/lib/virt-bootstrap/docker_images"
+    LIBVIRT_CONN = "lxc:///"
+    DEFAULT_IMG_DIR = "/var/lib/virt-bootstrap/docker_images"
 else:
-    virt_sandbox_connection = "qemu:///session"
-    default_image_dir = \
-        os.environ['HOME'] + "/.local/share/virt-bootstrap/docker_images"
+    LIBVIRT_CONN = "qemu:///session"
+    DEFAULT_IMG_DIR = os.environ['HOME']
+    DEFAULT_IMG_DIR += "/.local/share/virt-bootstrap/docker_images"
 
 
 def checksum(path, sum_type, sum_expected):
+    """
+    Validate file using checksum.
+    """
     algorithm = getattr(hashlib, sum_type)
     try:
-        fd = open(path, 'rb')
-        content = fd.read()
-        fd.close()
+        handle = open(path, 'rb')
+        content = handle.read()
+        handle.close()
 
         actual = algorithm(content).hexdigest()
         return actual == sum_expected
@@ -50,9 +57,11 @@ def checksum(path, sum_type, sum_expected):
 
 
 def safe_untar(src, dest):
-    # Extract tarball in LXC container for safety
+    """
+    Extract tarball within LXC container for safety.
+    """
     virt_sandbox = ['virt-sandbox',
-                    '-c', virt_sandbox_connection,
+                    '-c', LIBVIRT_CONN,
                     '-m', 'host-bind:/mnt=' + dest]  # Bind destination folder
 
     # Compression type is auto detected from tar
@@ -64,16 +73,22 @@ def safe_untar(src, dest):
 
 
 def get_layer_info(digest, image_dir):
+    """
+    Get checksum type/value and path to corresponding tarball.
+    """
     sum_type, sum_value = digest.split(':')
     layer_file = "{}/{}.tar".format(image_dir, sum_value)
     return (sum_type, sum_value, layer_file)
 
 
 def untar_layers(layers_list, image_dir, dest_dir):
+    """
+    Untar each of layers from container image.
+    """
     for layer in layers_list:
         sum_type, sum_value, layer_file = get_layer_info(layer['digest'],
                                                          image_dir)
-        logging.info('Untar layer file: ({}) {}'.format(sum_type, layer_file))
+        logging.info('Untar layer file: (%s) %s', sum_type, layer_file)
 
         # Verify the checksum
         if not checksum(layer_file, sum_type, sum_value):
@@ -139,6 +154,9 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
 
 
 def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
+    """
+    Extract docker layers in qcow2 images with backing chains.
+    """
     qcow2_backing_file = None
 
     for index, layer in enumerate(layers_list):
@@ -146,7 +164,7 @@ def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
         sum_type, sum_value, tar_file = \
          get_layer_info(layer['digest'], image_dir)
 
-        logging.info('Untar layer file: ({}) {}'.format(sum_type, tar_file))
+        logging.info('Untar layer file: (%s) %s', sum_type, tar_file)
 
         # Verify the checksum
         if not checksum(tar_file, sum_type, sum_value):
@@ -160,17 +178,20 @@ def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
         qcow2_backing_file = qcow2_layer_file
 
 
-class FileSource:
-    def __init__(self, url, username, password, fmt, insecure, no_cache):
+class FileSource(object):
+    """
+    Extract root filesystem from file.
+    """
+    def __init__(self, url, args):
         self.path = url.path
-        self.output_format = fmt
+        self.output_format = args.format
 
     def unpack(self, dest):
-        '''
+        """
         Safely extract root filesystem from tarball
 
         @param dest: Directory path where the files to be extraced
-        '''
+        """
         if self.output_format == 'dir':
             logging.info("Extracting files into destination directory")
             safe_untar(self.path, dest)
@@ -190,9 +211,13 @@ class FileSource:
         logging.info("Files are stored in: " + dest)
 
 
-class DockerSource:
-    def __init__(self, url, username, password, fmt, insecure, no_cache):
-        '''
+class DockerSource(object):
+    """
+    Extract files from Docker image
+    """
+
+    def __init__(self, url, args):
+        """
         Bootstrap root filesystem from Docker registry
 
         @param url: Address of source registry
@@ -201,33 +226,33 @@ class DockerSource:
         @param fmt: Format used to store image [dir, qcow2]
         @param insecure: Do not require HTTPS and certificate verification
         @param no_cache: Whether to store downloaded images or not
-        '''
+        """
 
         self.registry = url.netloc
         self.image = url.path
-        self.username = username
-        self.password = password
-        self.output_format = fmt
-        self.insecure = insecure
-        self.no_cache = no_cache
+        self.username = args.username
+        self.password = args.password
+        self.output_format = args.format
+        self.insecure = args.not_secure
+        self.no_cache = args.no_cache
         if self.image and not self.image.startswith('/'):
             self.image = '/' + self.image
         self.url = "docker://" + self.registry + self.image
 
     def unpack(self, dest):
-        '''
+        """
         Extract image files from Docker image
 
         @param dest: Directory path where the files to be extraced
-        '''
+        """
 
         if self.no_cache:
             tmp_dest = tempfile.mkdtemp('virt-bootstrap')
             images_dir = tmp_dest
         else:
-            if not os.path.exists(default_image_dir):
-                os.makedirs(default_image_dir)
-            images_dir = default_image_dir
+            if not os.path.exists(DEFAULT_IMG_DIR):
+                os.makedirs(DEFAULT_IMG_DIR)
+            images_dir = DEFAULT_IMG_DIR
 
         try:
             # Run skopeo copy into a tmp folder
@@ -247,8 +272,8 @@ class DockerSource:
             check_call(skopeo_copy)
 
             # Get the layers list from the manifest
-            mf = open(images_dir+"/manifest.json", "r")
-            manifest = json.load(mf)
+            manifest_file = open(images_dir+"/manifest.json", "r")
+            manifest = json.load(manifest_file)
 
             # Layers are in order - root layer first
             # Reference:
