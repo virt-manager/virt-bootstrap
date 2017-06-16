@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Authors: Cedric Bosdonnat <cbosdonnat@suse.com>
 #
 # Copyright (C) 2017 SUSE, Inc.
