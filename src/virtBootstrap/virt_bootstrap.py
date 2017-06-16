@@ -26,6 +26,7 @@ import gettext
 import sys
 import os
 from textwrap import dedent
+from logging import getLogger, DEBUG, INFO, WARNING
 from subprocess import CalledProcessError, Popen, PIPE
 try:
     from urlparse import urlparse
@@ -85,6 +86,10 @@ def bootstrap(args):
     """
     Get source object and call unpack method
     """
+    # Set log level
+    logger = getLogger()
+    logger.setLevel(DEBUG if args.debug else WARNING if args.quiet else INFO)
+
     source = get_source(args)
     if not os.path.exists(args.dest):
         os.makedirs(args.dest)
@@ -128,6 +133,11 @@ def main():
     parser.add_argument("-f", "--format", default='dir',
                         choices=['dir', 'qcow2'],
                         help=_("Format to be used for the root filesystem"))
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help=_("Show debug messages"))
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help=_("Suppresses messages notifying about"
+                               "current state or actions of virt-bootstrap"))
     # TODO add UID / GID mapping parameters
 
     try:
