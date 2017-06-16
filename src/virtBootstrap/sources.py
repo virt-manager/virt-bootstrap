@@ -56,6 +56,23 @@ def checksum(path, sum_type, sum_expected):
         return False
 
 
+def execute(cmd):
+    """
+    Execute command and log debug message.
+    """
+    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    output, err = proc.communicate()
+    logging.debug("Command: %s", ' '.join(cmd))
+    if output:
+        logging.debug("Stdout: %s", output)
+    if err:
+        logging.debug("Stderr: %s", err)
+
+    if proc.returncode != 0:
+        logging.error(_('Exit with non-zero code. %s'), proc.returncode)
+        raise CalledProcessError
+
+
 def safe_untar(src, dest):
     """
     Extract tarball within LXC container for safety.
@@ -111,21 +128,21 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
 
     if not backing_file:
         logging.info("Create base qcow2 image")
-        check_call(qemu_img_cmd)
+        execute(qemu_img_cmd)
 
         logging.info("Format qcow2 image")
-        check_call(['virt-format',
-                    '--format=qcow2',
-                    '--partition=none',
-                    '--filesystem=ext3',
-                    '-a', layer_file])
+        execute(['virt-format',
+                 '--format=qcow2',
+                 '--partition=none',
+                 '--filesystem=ext3',
+                 '-a', layer_file])
     else:
         # Add backing chain
         qemu_img_cmd.insert(2, "-b")
         qemu_img_cmd.insert(3, backing_file)
 
         logging.info("Crate qcow2 image with backing chain")
-        check_call(qemu_img_cmd)
+        execute(qemu_img_cmd)
 
     # Get mime type of archive
     mime_tar_file = get_mime_type(tar_file)
@@ -150,7 +167,7 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
         tar_in_cmd.append('compress:' + compression_fmts[mime_parts[1]])
 
     # Execute virt-tar-in command
-    check_call(tar_in_cmd)
+    execute(tar_in_cmd)
 
 
 def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
@@ -269,7 +286,7 @@ class DockerSource(object):
                 skopeo_copy.append('--src-creds={}:{}'.format(self.username,
                                                               self.password))
             # Run "skopeo copy" command
-            check_call(skopeo_copy)
+            execute(skopeo_copy)
 
             # Get the layers list from the manifest
             manifest_file = open(images_dir+"/manifest.json", "r")
