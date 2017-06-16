@@ -56,6 +56,7 @@ def get_source(args):
         return clazz(url,
                      args.username,
                      args.password,
+                     args.format,
                      args.not_secure,
                      args.no_cache)
     except Exception:
@@ -112,7 +113,9 @@ def main():
                         help=_("Root password to set in the created rootfs"))
     parser.add_argument("--no-cache", action="store_true",
                         help=_("Do not store downloaded Docker images"))
-    # TODO add --format [qcow2,dir] parameter
+    parser.add_argument("-f", "--format", default='dir',
+                        choices=['dir', 'qcow2'],
+                        help=_("Format to be used for the root filesystem"))
     # TODO add UID / GID mapping parameters
 
     try:
