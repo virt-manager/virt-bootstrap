@@ -26,7 +26,7 @@ import gettext
 import sys
 import os
 from textwrap import dedent
-from logging import getLogger, DEBUG, INFO, WARNING
+from logging import getLogger, DEBUG, INFO, WARNING, error
 from subprocess import CalledProcessError, Popen, PIPE
 try:
     from urlparse import urlparse
@@ -93,6 +93,10 @@ def bootstrap(args):
     source = get_source(args)
     if not os.path.exists(args.dest):
         os.makedirs(args.dest)
+    elif not os.path.isdir(args.dest): # Show error if not directory
+        error("Destination path '%s' is not directory.", args.dest)
+        sys.exit(1)
+
     source.unpack(args.dest)
 
     if args.root_password is not None:
