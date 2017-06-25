@@ -77,7 +77,7 @@ setup(
     description='Container bootstrapping tool',
     license="GPLv3",
     long_description=read('README.md'),
-    url='https://github.com/cbosdo/virt-bootstrap',
+    url='https://github.com/virt-manager/virt-bootstrap',
     # What does your project relate to?
     keywords='virtualization container rootfs',
     package_dir={"": "src"},
