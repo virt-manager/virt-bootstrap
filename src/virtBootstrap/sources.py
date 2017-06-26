@@ -263,7 +263,9 @@ class DockerSource(object):
         self.output_format = args.format
         self.insecure = args.not_secure
         self.no_cache = args.no_cache
-        if self.image and not self.image.startswith('/'):
+        if not self.registry and self.image.startswith('/'):
+            self.image = self.image[1:]
+        elif self.image and not self.image.startswith('/'):
             self.image = '/' + self.image
         self.url = "docker://" + self.registry + self.image
 
