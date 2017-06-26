@@ -27,7 +27,7 @@ import tempfile
 import getpass
 import os
 import logging
-from subprocess import call, CalledProcessError, PIPE, Popen
+from subprocess import CalledProcessError, PIPE, Popen
 
 # Default virtual size of qcow2 image
 DEF_QCOW2_SIZE = '5G'
@@ -86,9 +86,7 @@ def safe_untar(src, dest):
     # Compression type is auto detected from tar
     # Exclude files under /dev to avoid "Cannot mknod: Operation not permitted"
     params = ['--', '/bin/tar', 'xf', src, '-C', '/mnt', '--exclude', 'dev/*']
-    if call(virt_sandbox + params) != 0:
-        logging.error(_('virt-sandbox exit with non-zero code. '
-                        'Please check if "libvirtd" is running.'))
+    execute(virt_sandbox + params)
 
 
 def get_layer_info(digest, image_dir):
