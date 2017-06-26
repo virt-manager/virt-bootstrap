@@ -126,6 +126,9 @@ def get_mime_type(path):
 
 
 def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
+    """
+    Create qcow2 image from tarball.
+    """
     qemu_img_cmd = ["qemu-img", "create", "-f", "qcow2", layer_file, size]
 
     if not backing_file:
@@ -182,8 +185,8 @@ def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
         logging.info("Extracting layer (%s/%s)", index+1, len(layers_list))
 
         # Get layer file information
-        sum_type, sum_value, tar_file = \
-         get_layer_info(layer['digest'], image_dir)
+        sum_type, sum_value, tar_file = get_layer_info(layer['digest'],
+                                                       image_dir)
 
         logging.debug('Untar layer file: (%s) %s', sum_type, tar_file)
 
