@@ -102,10 +102,12 @@ def untar_layers(layers_list, image_dir, dest_dir):
     """
     Untar each of layers from container image.
     """
-    for layer in layers_list:
+    for index, layer in enumerate(layers_list):
+        logging.info("Extracting layer (%s/%s)", index+1, len(layers_list))
+
         sum_type, sum_value, layer_file = get_layer_info(layer['digest'],
                                                          image_dir)
-        logging.info('Untar layer file: (%s) %s', sum_type, layer_file)
+        logging.debug('Untar layer file: (%s) %s', sum_type, layer_file)
 
         # Verify the checksum
         if not checksum(layer_file, sum_type, sum_value):
@@ -127,10 +129,10 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
     qemu_img_cmd = ["qemu-img", "create", "-f", "qcow2", layer_file, size]
 
     if not backing_file:
-        logging.info("Create base qcow2 image")
+        logging.info("Creating base qcow2 image")
         execute(qemu_img_cmd)
 
-        logging.info("Format qcow2 image")
+        logging.info("Formatting qcow2 image")
         execute(['virt-format',
                  '--format=qcow2',
                  '--partition=none',
@@ -141,7 +143,7 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
         qemu_img_cmd.insert(2, "-b")
         qemu_img_cmd.insert(3, backing_file)
 
-        logging.info("Crate qcow2 image with backing chain")
+        logging.info("Creating qcow2 image with backing chain")
         execute(qemu_img_cmd)
 
     # Get mime type of archive
@@ -177,11 +179,13 @@ def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
     qcow2_backing_file = None
 
     for index, layer in enumerate(layers_list):
+        logging.info("Extracting layer (%s/%s)", index+1, len(layers_list))
+
         # Get layer file information
         sum_type, sum_value, tar_file = \
          get_layer_info(layer['digest'], image_dir)
 
-        logging.info('Untar layer file: (%s) %s', sum_type, tar_file)
+        logging.debug('Untar layer file: (%s) %s', sum_type, tar_file)
 
         # Verify the checksum
         if not checksum(tar_file, sum_type, sum_value):
@@ -300,8 +304,10 @@ class DockerSource(object):
             # Reference:
             # https://github.com/containers/image/blob/master/image/oci.go#L100
             if self.output_format == 'dir':
+                logging.info("Extracting container layers")
                 untar_layers(manifest['layers'], images_dir, dest)
             elif self.output_format == 'qcow2':
+                logging.info("Extracting container layers into qcow2 images")
                 extract_layers_in_qcow2(manifest['layers'], images_dir, dest)
             else:
                 raise Exception("Unknown format:" + self.output_format)
