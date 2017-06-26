@@ -60,17 +60,19 @@ def execute(cmd):
     """
     Execute command and log debug message.
     """
+    cmd_str = ' '.join(cmd)
+    logging.debug("Call command:\n%s", cmd_str)
+
     proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
     output, err = proc.communicate()
-    logging.debug("Command: %s", ' '.join(cmd))
+
     if output:
-        logging.debug("Stdout: %s", output)
+        logging.debug("Stdout:\n%s", output)
     if err:
-        logging.debug("Stderr: %s", err)
+        logging.debug("Stderr:\n%s", err)
 
     if proc.returncode != 0:
-        logging.error(_('Exit with non-zero code. %s'), proc.returncode)
-        raise CalledProcessError
+        raise CalledProcessError(proc.returncode, cmd_str)
 
 
 def safe_untar(src, dest):
