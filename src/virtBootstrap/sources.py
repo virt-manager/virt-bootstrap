@@ -211,6 +211,10 @@ class FileSource(object):
 
         @param dest: Directory path where the files to be extraced
         """
+
+        if not os.path.isfile(self.path):
+            raise Exception('Invalid file source "%s"' % self.path)
+
         if self.output_format == 'dir':
             logging.info("Extracting files into destination directory")
             safe_untar(self.path, dest)
