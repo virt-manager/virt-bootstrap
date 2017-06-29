@@ -151,11 +151,9 @@ def main():
     parser.add_argument("--not-secure", action='store_true',
                         help=_("Ignore HTTPS errors"))
     parser.add_argument("-u", "--username", default=None,
-                        help=_("Username to use"
-                               "to connect to the source registry"))
+                        help=_("Username for accessing the source registry"))
     parser.add_argument("-p", "--password", default=None,
-                        help=_("Password to use"
-                               "to connect to the source registry"))
+                        help=_("Password for accessing the source registry"))
     parser.add_argument("--root-password", default=None,
                         help=_("Root password to set in the created rootfs"))
     parser.add_argument("--no-cache", action="store_true",
