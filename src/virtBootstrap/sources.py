@@ -29,6 +29,11 @@ import os
 import logging
 from subprocess import CalledProcessError, PIPE, Popen
 
+
+# pylint: disable=invalid-name
+# Create logger
+logger = logging.getLogger(__name__)
+
 # Default virtual size of qcow2 image
 DEF_QCOW2_SIZE = '5G'
 if os.geteuid() == 0:
@@ -61,15 +66,15 @@ def execute(cmd):
     Execute command and log debug message.
     """
     cmd_str = ' '.join(cmd)
-    logging.debug("Call command:\n%s", cmd_str)
+    logger.debug("Call command:\n%s", cmd_str)
 
     proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
     output, err = proc.communicate()
 
     if output:
-        logging.debug("Stdout:\n%s", output)
+        logger.debug("Stdout:\n%s", output)
     if err:
-        logging.debug("Stderr:\n%s", err)
+        logger.debug("Stderr:\n%s", err)
 
     if proc.returncode != 0:
         raise CalledProcessError(proc.returncode, cmd_str)
@@ -103,11 +108,11 @@ def untar_layers(layers_list, image_dir, dest_dir):
     Untar each of layers from container image.
     """
     for index, layer in enumerate(layers_list):
-        logging.info("Extracting layer (%s/%s)", index+1, len(layers_list))
+        logger.info("Extracting layer (%s/%s)", index+1, len(layers_list))
 
         sum_type, sum_value, layer_file = get_layer_info(layer['digest'],
                                                          image_dir)
-        logging.debug('Untar layer file: (%s) %s', sum_type, layer_file)
+        logger.debug('Untar layer file: (%s) %s', sum_type, layer_file)
 
         # Verify the checksum
         if not checksum(layer_file, sum_type, sum_value):
@@ -132,10 +137,10 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
     qemu_img_cmd = ["qemu-img", "create", "-f", "qcow2", layer_file, size]
 
     if not backing_file:
-        logging.info("Creating base qcow2 image")
+        logger.info("Creating base qcow2 image")
         execute(qemu_img_cmd)
 
-        logging.info("Formatting qcow2 image")
+        logger.info("Formatting qcow2 image")
         execute(['virt-format',
                  '--format=qcow2',
                  '--partition=none',
@@ -146,12 +151,12 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
         qemu_img_cmd.insert(2, "-b")
         qemu_img_cmd.insert(3, backing_file)
 
-        logging.info("Creating qcow2 image with backing chain")
+        logger.info("Creating qcow2 image with backing chain")
         execute(qemu_img_cmd)
 
     # Get mime type of archive
     mime_tar_file = get_mime_type(tar_file)
-    logging.debug("Detected mime type of archive: %s", mime_tar_file)
+    logger.debug("Detected mime type of archive: %s", mime_tar_file)
 
     # Extract tarball using "tar-in" command from libguestfs
     tar_in_cmd = ["guestfish",
@@ -182,13 +187,13 @@ def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
     qcow2_backing_file = None
 
     for index, layer in enumerate(layers_list):
-        logging.info("Extracting layer (%s/%s)", index+1, len(layers_list))
+        logger.info("Extracting layer (%s/%s)", index+1, len(layers_list))
 
         # Get layer file information
         sum_type, sum_value, tar_file = get_layer_info(layer['digest'],
                                                        image_dir)
 
-        logging.debug('Untar layer file: (%s) %s', sum_type, tar_file)
+        logger.debug('Untar layer file: (%s) %s', sum_type, tar_file)
 
         # Verify the checksum
         if not checksum(tar_file, sum_type, sum_value):
@@ -221,7 +226,7 @@ class FileSource(object):
             raise Exception('Invalid file source "%s"' % self.path)
 
         if self.output_format == 'dir':
-            logging.info("Extracting files into destination directory")
+            logger.info("Extracting files into destination directory")
             safe_untar(self.path, dest)
 
         elif self.output_format == 'qcow2':
@@ -230,13 +235,13 @@ class FileSource(object):
             qcow2_file = os.path.realpath('{}/{}.qcow2'.format(dest,
                                                                file_name))
 
-            logging.info("Extracting files into qcow2 image")
+            logger.info("Extracting files into qcow2 image")
             create_qcow2(self.path, qcow2_file)
         else:
             raise Exception("Unknown format:" + self.output_format)
 
-        logging.info("Extraction completed successfully!")
-        logging.info("Files are stored in: " + dest)
+        logger.info("Extraction completed successfully!")
+        logger.info("Files are stored in: " + dest)
 
 
 class DockerSource(object):
@@ -309,10 +314,10 @@ class DockerSource(object):
             # Reference:
             # https://github.com/containers/image/blob/master/image/oci.go#L100
             if self.output_format == 'dir':
-                logging.info("Extracting container layers")
+                logger.info("Extracting container layers")
                 untar_layers(manifest['layers'], images_dir, dest)
             elif self.output_format == 'qcow2':
-                logging.info("Extracting container layers into qcow2 images")
+                logger.info("Extracting container layers into qcow2 images")
                 extract_layers_in_qcow2(manifest['layers'], images_dir, dest)
             else:
                 raise Exception("Unknown format:" + self.output_format)
@@ -321,8 +326,8 @@ class DockerSource(object):
             raise
 
         else:
-            logging.info("Download and extract completed!")
-            logging.info("Files are stored in: " + dest)
+            logger.info("Download and extract completed!")
+            logger.info("Files are stored in: " + dest)
 
         finally:
             # Clean up

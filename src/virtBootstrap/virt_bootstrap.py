@@ -23,10 +23,10 @@ and calls corresponding methods on appropriate object.
 
 import argparse
 import gettext
+import logging
 import sys
 import os
 from textwrap import dedent
-from logging import getLogger, DEBUG, INFO, WARNING, error
 from subprocess import CalledProcessError, Popen, PIPE
 try:
     from urlparse import urlparse
@@ -50,6 +50,10 @@ except IOError:
     except ImportError:
         import builtin
         builtin.__dict__['_'] = str
+
+# pylint: disable=invalid-name
+# Create logger
+logger = logging.getLogger(__name__)
 
 
 def get_source(args):
@@ -86,24 +90,43 @@ def bootstrap(args):
     """
     Get source object and call unpack method
     """
-    # Set log level
-    logger = getLogger()
-    logger.setLevel(DEBUG if args.debug else WARNING if args.quiet else INFO)
 
     source = get_source(args)
     if not os.path.exists(args.dest):
         os.makedirs(args.dest)
     elif not os.path.isdir(args.dest):  # Show error if not directory
-        error("Destination path '%s' is not directory.", args.dest)
+        logger.error("Destination path '%s' is not directory.", args.dest)
         sys.exit(1)
     elif not os.access(args.dest, os.W_OK):  # Check write permissions
-        error("No write permissions on destination path '%s'", args.dest)
+        logger.error("No write permissions on destination path '%s'",
+                     args.dest)
         sys.exit(1)
 
     source.unpack(args.dest)
 
     if args.root_password is not None:
         set_root_password(args.dest, args.root_password)
+
+
+def set_logging_conf(loglevel=None):
+    """
+    Set format and logging level
+    """
+    # Get logger
+    module_logger = logging.getLogger('virtBootstrap')
+
+    # Create console handler
+    console_handler = logging.StreamHandler()
+
+    # Set logging format
+    log_format = ('%(levelname)-8s: %(message)s')
+    console_handler.setFormatter(logging.Formatter(log_format))
+
+    # Add the handlers to logger
+    module_logger.addHandler(console_handler)
+
+    # Set logging level
+    module_logger.setLevel(loglevel or logging.INFO)
 
 
 def main():
@@ -140,15 +163,19 @@ def main():
     parser.add_argument("-f", "--format", default='dir',
                         choices=['dir', 'qcow2'],
                         help=_("Format to be used for the root filesystem"))
-    parser.add_argument("-d", "--debug", action="store_true",
-                        help=_("Show debug messages"))
-    parser.add_argument("-q", "--quiet", action="store_true",
+    parser.add_argument("-d", "--debug", action="store_const", dest="loglevel",
+                        const=logging.DEBUG, help=_("Show debug messages"))
+    parser.add_argument("-q", "--quiet", action="store_const", dest="loglevel",
+                        const=logging.WARNING,
                         help=_("Suppresses messages notifying about"
                                "current state or actions of virt-bootstrap"))
     # TODO add UID / GID mapping parameters
 
     try:
         args = parser.parse_args()
+
+        # Configure logging lovel/format
+        set_logging_conf(args.loglevel)
 
         # do the job here!
         bootstrap(args)
