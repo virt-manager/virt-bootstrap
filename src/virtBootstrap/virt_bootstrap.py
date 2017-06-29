@@ -96,6 +96,9 @@ def bootstrap(args):
     elif not os.path.isdir(args.dest):  # Show error if not directory
         error("Destination path '%s' is not directory.", args.dest)
         sys.exit(1)
+    elif not os.access(args.dest, os.W_OK):  # Check write permissions
+        error("No write permissions on destination path '%s'", args.dest)
+        sys.exit(1)
 
     source.unpack(args.dest)
 
