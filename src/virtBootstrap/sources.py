@@ -211,9 +211,9 @@ class FileSource(object):
     """
     Extract root filesystem from file.
     """
-    def __init__(self, url, args):
-        self.path = url.path
-        self.output_format = args.format
+    def __init__(self, **kwargs):
+        self.path = kwargs['uri'].path
+        self.output_format = kwargs['fmt']
 
     def unpack(self, dest):
         """
@@ -249,7 +249,7 @@ class DockerSource(object):
     Extract files from Docker image
     """
 
-    def __init__(self, url, args):
+    def __init__(self, **kwargs):
         """
         Bootstrap root filesystem from Docker registry
 
@@ -261,13 +261,14 @@ class DockerSource(object):
         @param no_cache: Whether to store downloaded images or not
         """
 
-        self.registry = url.netloc
-        self.image = url.path
-        self.username = args.username
-        self.password = args.password
-        self.output_format = args.format
-        self.insecure = args.not_secure
-        self.no_cache = args.no_cache
+        self.registry = kwargs['uri'].netloc
+        self.image = kwargs['uri'].path
+        self.username = kwargs['username']
+        self.password = kwargs['password']
+        self.output_format = kwargs['fmt']
+        self.insecure = kwargs['not_secure']
+        self.no_cache = kwargs['no_cache']
+
         if not self.registry and self.image.startswith('/'):
             self.image = self.image[1:]
         elif self.image and not self.image.startswith('/'):

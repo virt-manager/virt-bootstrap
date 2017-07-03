@@ -56,22 +56,16 @@ except IOError:
 logger = logging.getLogger(__name__)
 
 
-def get_source(args):
+def get_source(source_type):
     """
     Get object which match the source type
     """
-    url = urlparse(args.uri)
-    scheme = url.scheme
-
-    if scheme == "":
-        scheme = 'file'
-
     try:
-        class_name = "%sSource" % scheme.capitalize()
+        class_name = "%sSource" % source_type.capitalize()
         clazz = getattr(sources, class_name)
-        return clazz(url, args)
+        return clazz
     except Exception:
-        raise Exception("Invalid image URI scheme: '%s'" % url.scheme)
+        raise Exception("Invalid image URL scheme: '%s'" % source_type)
 
 
 def set_root_password(rootfs, password):
@@ -86,26 +80,38 @@ def set_root_password(rootfs, password):
         raise CalledProcessError(chpasswd.returncode, cmd=args, output=None)
 
 
-def bootstrap(args):
+# pylint: disable=too-many-arguments
+def bootstrap(uri, dest,
+              fmt='dir',
+              username=None,
+              password=None,
+              root_password=None,
+              not_secure=False,
+              no_cache=False):
     """
     Get source object and call unpack method
     """
+    uri = urlparse(uri)
+    source = get_source(uri.scheme or 'file')
 
-    source = get_source(args)
-    if not os.path.exists(args.dest):
-        os.makedirs(args.dest)
-    elif not os.path.isdir(args.dest):  # Show error if not directory
-        logger.error("Destination path '%s' is not directory.", args.dest)
+    if not os.path.exists(dest):
+        os.makedirs(dest)
+    elif not os.path.isdir(dest):  # Show error if not directory
+        logger.error("Destination path '%s' is not directory.", dest)
         sys.exit(1)
-    elif not os.access(args.dest, os.W_OK):  # Check write permissions
-        logger.error("No write permissions on destination path '%s'",
-                     args.dest)
+    elif not os.access(dest, os.W_OK):  # Check write permissions
+        logger.error("No write permissions on destination path '%s'", dest)
         sys.exit(1)
 
-    source.unpack(args.dest)
+    source(uri=uri,
+           fmt=fmt,
+           username=username,
+           password=password,
+           not_secure=not_secure,
+           no_cache=no_cache).unpack(dest)
 
-    if args.root_password is not None:
-        set_root_password(args.dest, args.root_password)
+    if root_password is not None:
+        set_root_password(dest, root_password)
 
 
 def set_logging_conf(loglevel=None):
@@ -176,7 +182,14 @@ def main():
         set_logging_conf(args.loglevel)
 
         # do the job here!
-        bootstrap(args)
+        bootstrap(uri=args.uri,
+                  dest=args.dest,
+                  fmt=args.format,
+                  username=args.username,
+                  password=args.password,
+                  root_password=args.root_password,
+                  not_secure=args.not_secure,
+                  no_cache=args.no_cache)
 
         sys.exit(0)
     except KeyboardInterrupt:
