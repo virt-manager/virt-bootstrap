@@ -261,19 +261,24 @@ class DockerSource(object):
         @param no_cache: Whether to store downloaded images or not
         """
 
-        self.registry = kwargs['uri'].netloc
-        self.image = kwargs['uri'].path
         self.username = kwargs['username']
         self.password = kwargs['password']
         self.output_format = kwargs['fmt']
         self.insecure = kwargs['not_secure']
         self.no_cache = kwargs['no_cache']
 
-        if not self.registry and self.image.startswith('/'):
-            self.image = self.image[1:]
-        elif self.image and not self.image.startswith('/'):
-            self.image = '/' + self.image
-        self.url = "docker://" + self.registry + self.image
+        registry = kwargs['uri'].netloc
+        image = kwargs['uri'].path
+
+        # Convert "docker:///<image>" to "docker://<image>"
+        if not registry and image.startswith('/'):
+            image = image[1:]
+
+        # Convert "docker://<image>/" to "docker://<image>"
+        elif image.endswith('/'):
+            image = image[:-1]
+
+        self.url = "docker://" + registry + image
 
     def unpack(self, dest):
         """
