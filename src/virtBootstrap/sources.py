@@ -20,8 +20,11 @@ Class definitions which process container image or
 archive from source and unpack them in destination directory.
 """
 
+import errno
+import fcntl
 import hashlib
 import json
+import select
 import shutil
 import tempfile
 import getpass
@@ -257,6 +260,69 @@ def get_image_details(src, raw=False):
     return json.loads(output)
 
 
+def size_to_bytes(string, fmt):
+    """
+    Convert human readable formats to bytes.
+    """
+    formats = {'B': 0, 'KB': 1, 'MB': 2, 'GB': 3, 'TB': 4}
+    return (string * pow(1024, formats[fmt.upper()]) if fmt in formats
+            else False)
+
+
+def is_new_layer_message(line):
+    """
+    Return T/F whether a line in skopeo's progress is indicating
+    start the process of new image layer.
+
+    Reference:
+    - https://github.com/containers/image/blob/master/copy/copy.go#L464
+    - https://github.com/containers/image/blob/master/copy/copy.go#L459
+    """
+    return line.startswith('Copying blob') or line.startswith('Skipping fetch')
+
+
+def is_layer_config_message(line):
+    """
+    Return T/F indicating whether the message from skopeo copies the manifest
+    file.
+
+    Reference:
+    - https://github.com/containers/image/blob/master/copy/copy.go#L414
+    """
+    return line.startswith('Copying config')
+
+
+def make_async(fd):
+    """
+    Add the O_NONBLOCK flag to a file descriptor.
+    """
+    fcntl.fcntl(fd, fcntl.F_SETFL,
+                fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+
+def read_async(fd):
+    """
+    Read some data from a file descriptor, ignoring EAGAIN errors
+    """
+    try:
+        return fd.read()
+    except IOError as e:
+        if e.errno != errno.EAGAIN:
+            raise
+        else:
+            return ''
+
+
+def str2float(element):
+    """
+    Convert string to float or return None.
+    """
+    try:
+        return float(element)
+    except ValueError:
+        return None
+
+
 class FileSource(object):
     """
     Extract root filesystem from file.
@@ -366,9 +432,78 @@ class DockerSource(object):
                                                           self.password))
         self.progress("Downloading container image", value=0, logger=logger)
         # Run "skopeo copy" command
-        execute(skopeo_copy)
+        self.read_skopeo_progress(skopeo_copy)
         # Remove the manifest file as it is not needed
         os.remove(os.path.join(self.images_dir, "manifest.json"))
+
+    def parse_output(self, proc):
+        """
+        Read stdout from skopeo's process asynchconosly.
+        """
+        current_layer, total_layers_num = 0, len(self.layers)
+
+        # Process the output until the process terminates
+        while proc.poll() is None:
+            # Wait for data to become available
+            stdout = select.select([proc.stdout], [], [])[0]
+            # Split output into line
+            output = read_async(stdout[0]).strip().split('\n')
+            for line in output:
+                if line:  # is not empty
+                    line_split = line.split()
+                    if is_new_layer_message(line):
+                        current_layer += 1
+                        self.progress("Downloading layer (%s/%s)"
+                                      % (current_layer, total_layers_num))
+                    # Use the single slash between layer's "downloaded" and
+                    # "total size" in the output to recognise progress message
+                    elif line_split[2] == '/':
+                        self.update_progress_from_output(line_split,
+                                                         current_layer,
+                                                         total_layers_num)
+
+                    # Stop parsing when manifest is copied.
+                    elif is_layer_config_message(line):
+                        break
+            else:
+                continue  # continue if the inner loop didn't break
+            break
+
+        if proc.poll() is None:
+            proc.wait()  # Wait until the process is finished
+        return proc.returncode == 0
+
+    def update_progress_from_output(self, line_split, current_l, total_l):
+        """
+        Parse a line from skopeo's output to extract the downloaded and
+        total size of image layer.
+
+        Calculate percentage and update the progress of virt-bootstrap.
+        """
+        d_size, d_format = str2float(line_split[0]), line_split[1]
+        t_size, t_format = str2float(line_split[3]), line_split[4]
+
+        if d_size and t_size:
+            downloaded_size = size_to_bytes(d_size, d_format)
+            total_size = size_to_bytes(t_size, t_format)
+            if downloaded_size and total_size:
+                try:
+                    self.progress(value=(50
+                                         * downloaded_size / total_size
+                                         * float(current_l)/total_l))
+                except Exception:
+                    pass  # Ignore failures
+
+    def read_skopeo_progress(self, cmd):
+        """
+        Parse the output from skopeo copy to track download progress.
+        """
+        proc = Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+
+        # Without `make_async`, `fd.read` in `read_async` blocks.
+        make_async(proc.stdout)
+        if not self.parse_output(proc):
+            raise CalledProcessError(cmd, proc.stderr.read())
 
     def validate_image_layers(self):
         """
