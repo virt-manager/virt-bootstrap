@@ -222,6 +222,20 @@ def get_image_dir(no_cache=False):
     return DEFAULT_IMG_DIR
 
 
+def get_image_details(src, raw=False):
+    """
+    Return details of container image from "skopeo inspect" commnad.
+    """
+    cmd = ['skopeo', 'inspect', src]
+    if raw:
+        cmd.append('--raw')
+    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    output, error = proc.communicate()
+    if error:
+        raise ValueError("Image could not be retrieved:", error)
+    return json.loads(output)
+
+
 class FileSource(object):
     """
     Extract root filesystem from file.
@@ -295,6 +309,8 @@ class DockerSource(object):
 
         self.url = "docker://" + registry + image
         self.images_dir = get_image_dir(self.no_cache)
+        # Retrive manifest from registry
+        self.manifest = get_image_details(self.url, raw=True)
 
     def unpack(self, dest):
         """
@@ -319,20 +335,19 @@ class DockerSource(object):
             # Run "skopeo copy" command
             execute(skopeo_copy)
 
-            # Get the layers list from the manifest
-            manifest_file = open(self.images_dir + "/manifest.json", "r")
-            manifest = json.load(manifest_file)
+            # Remove the manifest file as it is not needed
+            os.remove(os.path.join(self.images_dir, "manifest.json"))
 
             # Layers are in order - root layer first
             # Reference:
             # https://github.com/containers/image/blob/master/image/oci.go#L100
             if self.output_format == 'dir':
                 logger.info("Extracting container layers")
-                untar_layers(manifest['layers'], self.images_dir, dest)
+                untar_layers(self.manifest['layers'], self.images_dir, dest)
             elif self.output_format == 'qcow2':
                 logger.info("Extracting container layers into qcow2 images")
-                extract_layers_in_qcow2(manifest['layers'], self.images_dir,
-                                        dest)
+                extract_layers_in_qcow2(self.manifest['layers'],
+                                        self.images_dir, dest)
             else:
                 raise Exception("Unknown format:" + self.output_format)
 
