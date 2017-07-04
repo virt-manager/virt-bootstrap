@@ -207,6 +207,21 @@ def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
         qcow2_backing_file = qcow2_layer_file
 
 
+def get_image_dir(no_cache=False):
+    """
+    Get the directory where image layers are stored.
+
+    @param no_cache: Boolean, indicates whether to use temporary directory
+    """
+    if no_cache:
+        return tempfile.mkdtemp('virt-bootstrap')
+
+    if not os.path.exists(DEFAULT_IMG_DIR):
+        os.makedirs(DEFAULT_IMG_DIR)
+
+    return DEFAULT_IMG_DIR
+
+
 class FileSource(object):
     """
     Extract root filesystem from file.
@@ -279,6 +294,7 @@ class DockerSource(object):
             image = image[:-1]
 
         self.url = "docker://" + registry + image
+        self.images_dir = get_image_dir(self.no_cache)
 
     def unpack(self, dest):
         """
@@ -286,21 +302,12 @@ class DockerSource(object):
 
         @param dest: Directory path where the files to be extraced
         """
-
-        if self.no_cache:
-            tmp_dest = tempfile.mkdtemp('virt-bootstrap')
-            images_dir = tmp_dest
-        else:
-            if not os.path.exists(DEFAULT_IMG_DIR):
-                os.makedirs(DEFAULT_IMG_DIR)
-            images_dir = DEFAULT_IMG_DIR
-
         try:
             # Run skopeo copy into a tmp folder
             # Note: we don't want to expose --src-cert-dir to users as
             #       they should place the certificates in the system
             #       folders for broader enablement
-            skopeo_copy = ["skopeo", "copy", self.url, "dir:"+images_dir]
+            skopeo_copy = ["skopeo", "copy", self.url, "dir:" + self.images_dir]
 
             if self.insecure:
                 skopeo_copy.append('--src-tls-verify=false')
@@ -313,7 +320,7 @@ class DockerSource(object):
             execute(skopeo_copy)
 
             # Get the layers list from the manifest
-            manifest_file = open(images_dir+"/manifest.json", "r")
+            manifest_file = open(self.images_dir + "/manifest.json", "r")
             manifest = json.load(manifest_file)
 
             # Layers are in order - root layer first
@@ -321,10 +328,11 @@ class DockerSource(object):
             # https://github.com/containers/image/blob/master/image/oci.go#L100
             if self.output_format == 'dir':
                 logger.info("Extracting container layers")
-                untar_layers(manifest['layers'], images_dir, dest)
+                untar_layers(manifest['layers'], self.images_dir, dest)
             elif self.output_format == 'qcow2':
                 logger.info("Extracting container layers into qcow2 images")
-                extract_layers_in_qcow2(manifest['layers'], images_dir, dest)
+                extract_layers_in_qcow2(manifest['layers'], self.images_dir,
+                                        dest)
             else:
                 raise Exception("Unknown format:" + self.output_format)
 
@@ -337,5 +345,5 @@ class DockerSource(object):
 
         finally:
             # Clean up
-            if self.no_cache:
-                shutil.rmtree(tmp_dest)
+            if self.no_cache and self.images_dir != DEFAULT_IMG_DIR:
+                shutil.rmtree(self.images_dir)
