@@ -116,27 +116,25 @@ def format_number(number):
     return(fmt % (number or 0, symbols[depth]))
 
 
-def get_layer_info(digest, image_dir):
+def log_layer_extract(layer, current, total):
     """
-    Get checksum type/value and path to corresponding tarball.
+    Create log message on layer extract.
     """
-    sum_type, sum_value = digest.split(':')
-    layer_file = "{}/{}.tar".format(image_dir, sum_value)
-    return (sum_type, sum_value, layer_file)
+    sum_type, sum_value, layer_file, layer_size = layer
+    logger.info("Extracting layer (%s/%s) with size: %s",
+                current, total, format_number(layer_size))
+    logger.debug('Untar layer: (%s:%s) %s', sum_type, sum_value, layer_file)
 
 
-def untar_layers(layers_list, image_dir, dest_dir):
+def untar_layers(layers_list, dest_dir):
     """
     Untar each of layers from container image.
     """
+    nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
-        logger.info("Extracting layer (%s/%s) with size: %s",
-                    index+1, len(layers_list), format_number(layer['size']))
+        log_layer_extract(layer, index + 1, nlayers)
 
-        sum_type, sum_value, layer_file = get_layer_info(layer['digest'],
-                                                         image_dir)
-        logger.debug('Untar layer file: (%s) %s', sum_type, layer_file)
-
+        sum_type, sum_value, layer_file, _ignore = layer
         # Verify the checksum
         if not checksum(layer_file, sum_type, sum_value):
             raise Exception("Digest not matching: " + layer['digest'])
@@ -203,22 +201,17 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
     execute(tar_in_cmd)
 
 
-def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
+def extract_layers_in_qcow2(layers_list, dest_dir):
     """
     Extract docker layers in qcow2 images with backing chains.
     """
     qcow2_backing_file = None
 
+    nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
-        logger.info("Extracting layer (%s/%s) with size: %s",
-                    index+1, len(layers_list), format_number(layer['size']))
+        log_layer_extract(layer, index + 1, nlayers)
 
-        # Get layer file information
-        sum_type, sum_value, tar_file = get_layer_info(layer['digest'],
-                                                       image_dir)
-
-        logger.debug('Untar layer file: (%s) %s', sum_type, tar_file)
-
+        sum_type, sum_value, tar_file, _ignore = layer
         # Verify the checksum
         if not checksum(tar_file, sum_type, sum_value):
             raise Exception("Digest not matching: " + layer['digest'])
@@ -302,6 +295,7 @@ class DockerSource(object):
     Extract files from Docker image
     """
 
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, **kwargs):
         """
         Bootstrap root filesystem from Docker registry
@@ -333,8 +327,16 @@ class DockerSource(object):
 
         self.url = "docker://" + registry + image
         self.images_dir = get_image_dir(self.no_cache)
+
         # Retrive manifest from registry
         self.manifest = get_image_details(self.url, raw=True)
+
+        # Get layers' digest, sum_type, size and file_path in a list
+        self.layers = []
+        for layer in self.manifest['layers']:
+            sum_type, layer_sum = layer['digest'].split(':')
+            file_path = os.path.join(self.images_dir, layer_sum + '.tar')
+            self.layers.append([sum_type, layer_sum, file_path, layer['size']])
 
     def unpack(self, dest):
         """
@@ -367,11 +369,10 @@ class DockerSource(object):
             # https://github.com/containers/image/blob/master/image/oci.go#L100
             if self.output_format == 'dir':
                 logger.info("Extracting container layers")
-                untar_layers(self.manifest['layers'], self.images_dir, dest)
+                untar_layers(self.layers, dest)
             elif self.output_format == 'qcow2':
                 logger.info("Extracting container layers into qcow2 images")
-                extract_layers_in_qcow2(self.manifest['layers'],
-                                        self.images_dir, dest)
+                extract_layers_in_qcow2(self.layers, dest)
             else:
                 raise Exception("Unknown format:" + self.output_format)
 
