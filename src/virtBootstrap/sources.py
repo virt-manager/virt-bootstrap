@@ -56,8 +56,14 @@ def checksum(path, sum_type, sum_expected):
         handle.close()
 
         actual = algorithm(content).hexdigest()
-        return actual == sum_expected
-    except Exception:
+        if not actual == sum_expected:
+            logger.warning("File '%s' has invalid hash sum.\nExpected: %s\n"
+                           "Actual: %s", path, sum_expected, actual)
+            return False
+        return True
+    except Exception as err:
+        logger.warning("Error occured while validating "
+                       "the hash sum of file: %s\n%s", path, err)
         return False
 
 
