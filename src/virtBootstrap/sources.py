@@ -360,6 +360,28 @@ class DockerSource(object):
         # Remove the manifest file as it is not needed
         os.remove(os.path.join(self.images_dir, "manifest.json"))
 
+    def validate_image_layers(self):
+        """
+        Check if layers of container image exist in image_dir
+        and have valid hash sum.
+        """
+        for sum_type, sum_expected, path, _ignore in self.layers:
+            logger.debug("Checking layer: %s", path)
+            if not (os.path.exists(path)
+                    and checksum(path, sum_type, sum_expected)):
+                return False
+        return True
+
+    def fetch_layers(self):
+        """
+        Retrieve layers of container image.
+        """
+        # Check if layers have been downloaded
+        if self.validate_image_layers():
+            logger.info("Using cached image layers")
+        else:
+            self.download_image()
+
     def unpack(self, dest):
         """
         Extract image files from Docker image
@@ -370,7 +392,7 @@ class DockerSource(object):
             # Layers are in order - root layer first
             # Reference:
             # https://github.com/containers/image/blob/master/image/oci.go#L100
-            self.download_image()
+            self.fetch_layers()
 
             # Unpack to destination directory
             if self.output_format == 'dir':
