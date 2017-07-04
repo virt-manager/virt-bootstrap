@@ -133,11 +133,7 @@ def untar_layers(layers_list, dest_dir):
     nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
         log_layer_extract(layer, index + 1, nlayers)
-
-        sum_type, sum_value, layer_file, _ignore = layer
-        # Verify the checksum
-        if not checksum(layer_file, sum_type, sum_value):
-            raise Exception("Digest not matching: " + layer['digest'])
+        layer_file = layer[2]
 
         # Extract layer tarball into destination directory
         safe_untar(layer_file, dest_dir)
@@ -210,11 +206,7 @@ def extract_layers_in_qcow2(layers_list, dest_dir):
     nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
         log_layer_extract(layer, index + 1, nlayers)
-
-        sum_type, sum_value, tar_file, _ignore = layer
-        # Verify the checksum
-        if not checksum(tar_file, sum_type, sum_value):
-            raise Exception("Digest not matching: " + layer['digest'])
+        tar_file = layer[2]
 
         # Name format for the qcow2 image
         qcow2_layer_file = "{}/layer-{}.qcow2".format(dest_dir, index)
