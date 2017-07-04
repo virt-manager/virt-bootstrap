@@ -81,6 +81,25 @@ def set_root_password(rootfs, password):
         raise CalledProcessError(chpasswd.returncode, cmd=args, output=None)
 
 
+def write_progress(prog):
+    """
+    Write progress output to console
+    """
+    # Get terminal width
+    try:
+        terminal_width = int(Popen(["stty", "size"], stdout=PIPE).stdout
+                             .read().split()[1])
+    except Exception:
+        terminal_width = 80
+    # Prepare message
+    msg = "\rStatus: %s, Progress: %.2f%%" % (prog['status'], prog['value'])
+    # Fill with whitespace and return cursor at the begging
+    msg = "%s\r" % msg.ljust(terminal_width)
+    # Write message to console
+    sys.stdout.write(msg)
+    sys.stdout.flush()
+
+
 # pylint: disable=too-many-arguments
 def bootstrap(uri, dest,
               fmt='dir',
@@ -179,13 +198,19 @@ def main():
                         const=logging.WARNING,
                         help=_("Suppresses messages notifying about"
                                "current state or actions of virt-bootstrap"))
+    parser.add_argument("--status-only", action="store_const",
+                        const=write_progress,
+                        help=_("Show only the current status and progress"
+                               "of virt-bootstrap"))
+
     # TODO add UID / GID mapping parameters
 
     try:
         args = parser.parse_args()
 
-        # Configure logging lovel/format
-        set_logging_conf(args.loglevel)
+        if not args.status_only:
+            # Configure logging lovel/format
+            set_logging_conf(args.loglevel)
 
         # do the job here!
         bootstrap(uri=args.uri,
@@ -195,7 +220,8 @@ def main():
                   password=args.password,
                   root_password=args.root_password,
                   not_secure=args.not_secure,
-                  no_cache=args.no_cache)
+                  no_cache=args.no_cache,
+                  progress_cb=args.status_only)
 
         sys.exit(0)
     except KeyboardInterrupt:
