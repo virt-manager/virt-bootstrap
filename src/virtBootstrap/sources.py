@@ -94,6 +94,28 @@ def safe_untar(src, dest):
     execute(virt_sandbox + params)
 
 
+def format_number(number):
+    """
+    Turn numbers into human-readable metric-like numbers
+    """
+    symbols = ['', 'KiB', 'MiB', 'GiB']
+    step = 1024.0
+    thresh = 999
+    depth = 0
+    max_depth = len(symbols) - 1
+
+    while number > thresh and depth < max_depth:
+        depth = depth + 1
+        number = number / step
+
+    if int(number) == float(number):
+        fmt = '%i %s'
+    else:
+        fmt = '%.2f %s'
+
+    return(fmt % (number or 0, symbols[depth]))
+
+
 def get_layer_info(digest, image_dir):
     """
     Get checksum type/value and path to corresponding tarball.
@@ -108,7 +130,8 @@ def untar_layers(layers_list, image_dir, dest_dir):
     Untar each of layers from container image.
     """
     for index, layer in enumerate(layers_list):
-        logger.info("Extracting layer (%s/%s)", index+1, len(layers_list))
+        logger.info("Extracting layer (%s/%s) with size: %s",
+                    index+1, len(layers_list), format_number(layer['size']))
 
         sum_type, sum_value, layer_file = get_layer_info(layer['digest'],
                                                          image_dir)
@@ -187,7 +210,8 @@ def extract_layers_in_qcow2(layers_list, image_dir, dest_dir):
     qcow2_backing_file = None
 
     for index, layer in enumerate(layers_list):
-        logger.info("Extracting layer (%s/%s)", index+1, len(layers_list))
+        logger.info("Extracting layer (%s/%s) with size: %s",
+                    index+1, len(layers_list), format_number(layer['size']))
 
         # Get layer file information
         sum_type, sum_value, tar_file = get_layer_info(layer['digest'],
