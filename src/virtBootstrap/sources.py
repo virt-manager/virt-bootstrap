@@ -122,27 +122,30 @@ def format_number(number):
     return(fmt % (number or 0, symbols[depth]))
 
 
-def log_layer_extract(layer, current, total):
+def log_layer_extract(layer, current, total, progress):
     """
     Create log message on layer extract.
     """
     sum_type, sum_value, layer_file, layer_size = layer
-    logger.info("Extracting layer (%s/%s) with size: %s",
-                current, total, format_number(layer_size))
+    progress("Extracting layer (%s/%s) with size: %s"
+             % (current, total, format_number(layer_size)), logger=logger)
     logger.debug('Untar layer: (%s:%s) %s', sum_type, sum_value, layer_file)
 
 
-def untar_layers(layers_list, dest_dir):
+def untar_layers(layers_list, dest_dir, progress):
     """
     Untar each of layers from container image.
     """
     nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
-        log_layer_extract(layer, index + 1, nlayers)
+        log_layer_extract(layer, index + 1, nlayers, progress)
         layer_file = layer[2]
 
         # Extract layer tarball into destination directory
         safe_untar(layer_file, dest_dir)
+
+        # Update progress value
+        progress(value=(float(index + 1) / nlayers * 50) + 50)
 
 
 def get_mime_type(path):
@@ -203,7 +206,7 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
     execute(tar_in_cmd)
 
 
-def extract_layers_in_qcow2(layers_list, dest_dir):
+def extract_layers_in_qcow2(layers_list, dest_dir, progress):
     """
     Extract docker layers in qcow2 images with backing chains.
     """
@@ -211,7 +214,7 @@ def extract_layers_in_qcow2(layers_list, dest_dir):
 
     nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
-        log_layer_extract(layer, index + 1, nlayers)
+        log_layer_extract(layer, index + 1, nlayers, progress)
         tar_file = layer[2]
 
         # Name format for the qcow2 image
@@ -220,6 +223,9 @@ def extract_layers_in_qcow2(layers_list, dest_dir):
         create_qcow2(tar_file, qcow2_layer_file, qcow2_backing_file)
         # Keep the file path for the next layer
         qcow2_backing_file = qcow2_layer_file
+
+        # Update progress value
+        progress(value=(float(index + 1) / nlayers * 50) + 50)
 
 
 def get_image_dir(no_cache=False):
@@ -258,6 +264,7 @@ class FileSource(object):
     def __init__(self, **kwargs):
         self.path = kwargs['uri'].path
         self.output_format = kwargs['fmt']
+        self.progress = kwargs['progress'].update_progress
 
     def unpack(self, dest):
         """
@@ -270,7 +277,8 @@ class FileSource(object):
             raise Exception('Invalid file source "%s"' % self.path)
 
         if self.output_format == 'dir':
-            logger.info("Extracting files into destination directory")
+            self.progress("Extracting files into destination directory",
+                          value=0, logger=logger)
             safe_untar(self.path, dest)
 
         elif self.output_format == 'qcow2':
@@ -279,12 +287,14 @@ class FileSource(object):
             qcow2_file = os.path.realpath('{}/{}.qcow2'.format(dest,
                                                                file_name))
 
-            logger.info("Extracting files into qcow2 image")
+            self.progress("Extracting files into qcow2 image", value=0,
+                          logger=logger)
             create_qcow2(self.path, qcow2_file)
         else:
             raise Exception("Unknown format:" + self.output_format)
 
-        logger.info("Extraction completed successfully!")
+        self.progress("Extraction completed successfully!", value=100,
+                      logger=logger)
         logger.info("Files are stored in: " + dest)
 
 
@@ -304,6 +314,7 @@ class DockerSource(object):
         @param fmt: Format used to store image [dir, qcow2]
         @param insecure: Do not require HTTPS and certificate verification
         @param no_cache: Whether to store downloaded images or not
+        @param progress: Instance of the progress module
         """
 
         self.username = kwargs['username']
@@ -311,6 +322,7 @@ class DockerSource(object):
         self.output_format = kwargs['fmt']
         self.insecure = kwargs['not_secure']
         self.no_cache = kwargs['no_cache']
+        self.progress = kwargs['progress'].update_progress
 
         registry = kwargs['uri'].netloc
         image = kwargs['uri'].path
@@ -352,7 +364,7 @@ class DockerSource(object):
                 self.password = getpass.getpass()
             skopeo_copy.append('--src-creds={}:{}'.format(self.username,
                                                           self.password))
-        logger.info("Downloading container image")
+        self.progress("Downloading container image", value=0, logger=logger)
         # Run "skopeo copy" command
         execute(skopeo_copy)
         # Remove the manifest file as it is not needed
@@ -363,6 +375,7 @@ class DockerSource(object):
         Check if layers of container image exist in image_dir
         and have valid hash sum.
         """
+        self.progress("Checking cached layers", value=0, logger=logger)
         for sum_type, sum_expected, path, _ignore in self.layers:
             logger.debug("Checking layer: %s", path)
             if not (os.path.exists(path)
@@ -375,9 +388,7 @@ class DockerSource(object):
         Retrieve layers of container image.
         """
         # Check if layers have been downloaded
-        if self.validate_image_layers():
-            logger.info("Using cached image layers")
-        else:
+        if not self.validate_image_layers():
             self.download_image()
 
     def unpack(self, dest):
@@ -394,11 +405,13 @@ class DockerSource(object):
 
             # Unpack to destination directory
             if self.output_format == 'dir':
-                logger.info("Extracting container layers")
-                untar_layers(self.layers, dest)
+                self.progress("Extracting container layers", value=50,
+                              logger=logger)
+                untar_layers(self.layers, dest, self.progress)
             elif self.output_format == 'qcow2':
-                logger.info("Extracting container layers into qcow2 images")
-                extract_layers_in_qcow2(self.layers, dest)
+                self.progress("Extracting container layers into qcow2 images",
+                              value=50, logger=logger)
+                extract_layers_in_qcow2(self.layers, dest, self.progress)
             else:
                 raise Exception("Unknown format:" + self.output_format)
 
@@ -406,7 +419,8 @@ class DockerSource(object):
             raise
 
         else:
-            logger.info("Download and extract completed!")
+            self.progress("Download and extract completed!", value=100,
+                          logger=logger)
             logger.info("Files are stored in: " + dest)
 
         finally:

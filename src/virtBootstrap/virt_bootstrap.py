@@ -34,6 +34,7 @@ except ImportError:
     from urllib.parse import urlparse
 
 from virtBootstrap import sources
+from virtBootstrap import progress
 
 
 gettext.bindtextdomain("virt-bootstrap", "/usr/share/locale")
@@ -87,10 +88,14 @@ def bootstrap(uri, dest,
               password=None,
               root_password=None,
               not_secure=False,
-              no_cache=False):
+              no_cache=False,
+              progress_cb=None):
     """
     Get source object and call unpack method
     """
+    # Get instance of progress storing module
+    prog = progress.Progress(progress_cb)
+
     uri = urlparse(uri)
     source = get_source(uri.scheme or 'file')
 
@@ -108,7 +113,8 @@ def bootstrap(uri, dest,
            username=username,
            password=password,
            not_secure=not_secure,
-           no_cache=no_cache).unpack(dest)
+           no_cache=no_cache,
+           progress=prog).unpack(dest)
 
     if root_password is not None:
         set_root_password(dest, root_password)
