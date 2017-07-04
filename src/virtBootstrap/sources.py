@@ -338,6 +338,28 @@ class DockerSource(object):
             file_path = os.path.join(self.images_dir, layer_sum + '.tar')
             self.layers.append([sum_type, layer_sum, file_path, layer['size']])
 
+    def download_image(self):
+        """
+        Download image layers using "skopeo copy".
+        """
+        # Note: we don't want to expose --src-cert-dir to users as
+        #       they should place the certificates in the system
+        #       folders for broader enablement
+        skopeo_copy = ["skopeo", "copy", self.url, "dir:" + self.images_dir]
+
+        if self.insecure:
+            skopeo_copy.append('--src-tls-verify=false')
+        if self.username:
+            if not self.password:
+                self.password = getpass.getpass()
+            skopeo_copy.append('--src-creds={}:{}'.format(self.username,
+                                                          self.password))
+        logger.info("Downloading container image")
+        # Run "skopeo copy" command
+        execute(skopeo_copy)
+        # Remove the manifest file as it is not needed
+        os.remove(os.path.join(self.images_dir, "manifest.json"))
+
     def unpack(self, dest):
         """
         Extract image files from Docker image
@@ -345,28 +367,12 @@ class DockerSource(object):
         @param dest: Directory path where the files to be extraced
         """
         try:
-            # Run skopeo copy into a tmp folder
-            # Note: we don't want to expose --src-cert-dir to users as
-            #       they should place the certificates in the system
-            #       folders for broader enablement
-            skopeo_copy = ["skopeo", "copy", self.url, "dir:" + self.images_dir]
-
-            if self.insecure:
-                skopeo_copy.append('--src-tls-verify=false')
-            if self.username:
-                if not self.password:
-                    self.password = getpass.getpass()
-                skopeo_copy.append('--src-creds={}:{}'.format(self.username,
-                                                              self.password))
-            # Run "skopeo copy" command
-            execute(skopeo_copy)
-
-            # Remove the manifest file as it is not needed
-            os.remove(os.path.join(self.images_dir, "manifest.json"))
-
             # Layers are in order - root layer first
             # Reference:
             # https://github.com/containers/image/blob/master/image/oci.go#L100
+            self.download_image()
+
+            # Unpack to destination directory
             if self.output_format == 'dir':
                 logger.info("Extracting container layers")
                 untar_layers(self.layers, dest)
