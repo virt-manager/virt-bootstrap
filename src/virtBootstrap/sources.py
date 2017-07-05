@@ -165,8 +165,8 @@ class DockerSource(object):
             # Split output into line
             output = utils.read_async(stdout[0]).strip().split('\n')
             for line in output:
-                if line:  # is not empty
-                    line_split = line.split()
+                line_split = line.split()
+                if len(line_split) > 2:  # Avoid short lines
                     if utils.is_new_layer_message(line):
                         current_layer += 1
                         self.progress("Downloading layer (%s/%s)"
