@@ -102,7 +102,7 @@ def safe_untar(src, dest):
     execute(virt_sandbox + params)
 
 
-def format_number(number):
+def bytes_to_size(number):
     """
     Turn numbers into human-readable metric-like numbers
     """
@@ -139,7 +139,7 @@ def log_layer_extract(layer, current, total, progress):
     """
     sum_type, sum_value, layer_file, layer_size = layer
     progress("Extracting layer (%s/%s) with size: %s"
-             % (current, total, format_number(layer_size)), logger=logger)
+             % (current, total, bytes_to_size(layer_size)), logger=logger)
     logger.debug('Untar layer: (%s:%s) %s', sum_type, sum_value, layer_file)
 
 
