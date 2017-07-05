@@ -35,6 +35,7 @@ except ImportError:
 
 from virtBootstrap import sources
 from virtBootstrap import progress
+from virtBootstrap import utils
 
 
 gettext.bindtextdomain("virt-bootstrap", "/usr/share/locale")
@@ -79,25 +80,6 @@ def set_root_password(rootfs, password):
     chpasswd.communicate(input=users)
     if chpasswd.returncode != 0:
         raise CalledProcessError(chpasswd.returncode, cmd=args, output=None)
-
-
-def write_progress(prog):
-    """
-    Write progress output to console
-    """
-    # Get terminal width
-    try:
-        terminal_width = int(Popen(["stty", "size"], stdout=PIPE).stdout
-                             .read().split()[1])
-    except Exception:
-        terminal_width = 80
-    # Prepare message
-    msg = "\rStatus: %s, Progress: %.2f%%" % (prog['status'], prog['value'])
-    # Fill with whitespace and return cursor at the begging
-    msg = "%s\r" % msg.ljust(terminal_width)
-    # Write message to console
-    sys.stdout.write(msg)
-    sys.stdout.flush()
 
 
 # pylint: disable=too-many-arguments
@@ -199,7 +181,7 @@ def main():
                         help=_("Suppresses messages notifying about"
                                "current state or actions of virt-bootstrap"))
     parser.add_argument("--status-only", action="store_const",
-                        const=write_progress,
+                        const=utils.write_progress,
                         help=_("Show only the current status and progress"
                                "of virt-bootstrap"))
 
