@@ -246,13 +246,18 @@ def get_image_dir(no_cache=False):
     return DEFAULT_IMG_DIR
 
 
-def get_image_details(src, raw=False):
+def get_image_details(src, raw=False,
+                      insecure=False, username=False, password=False):
     """
     Return details of container image from "skopeo inspect" commnad.
     """
     cmd = ['skopeo', 'inspect', src]
     if raw:
         cmd.append('--raw')
+    if insecure:
+        cmd.append('--tls-verify=false')
+    if username and password:
+        cmd.append("--creds=%s:%s" % (username, password))
     proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
     output, error = proc.communicate()
     if error:
@@ -390,6 +395,9 @@ class DockerSource(object):
         self.no_cache = kwargs['no_cache']
         self.progress = kwargs['progress'].update_progress
 
+        if self.username and not self.password:
+            self.password = getpass.getpass()
+
         registry = kwargs['uri'].netloc
         image = kwargs['uri'].path
 
@@ -405,7 +413,10 @@ class DockerSource(object):
         self.images_dir = get_image_dir(self.no_cache)
 
         # Retrive manifest from registry
-        self.manifest = get_image_details(self.url, raw=True)
+        self.manifest = get_image_details(self.url, raw=True,
+                                          insecure=self.insecure,
+                                          username=self.username,
+                                          password=self.password)
 
         # Get layers' digest, sum_type, size and file_path in a list
         self.layers = []
@@ -426,8 +437,6 @@ class DockerSource(object):
         if self.insecure:
             skopeo_copy.append('--src-tls-verify=false')
         if self.username:
-            if not self.password:
-                self.password = getpass.getpass()
             skopeo_copy.append('--src-creds={}:{}'.format(self.username,
                                                           self.password))
         self.progress("Downloading container image", value=0, logger=logger)
