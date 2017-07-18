@@ -214,6 +214,9 @@ class DockerSource(object):
 
         Calculate percentage and update the progress of virt-bootstrap.
         """
+        if not (len(line_split) > 4 and isinstance(line_split, list)):
+            return
+
         d_size, d_format = utils.str2float(line_split[0]), line_split[1]
         t_size, t_format = utils.str2float(line_split[3]), line_split[4]
 
