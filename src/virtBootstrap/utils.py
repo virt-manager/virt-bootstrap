@@ -121,7 +121,7 @@ def bytes_to_size(number):
     else:
         fmt = '%.2f %s'
 
-    return(fmt % (number or 0, symbols[depth]))
+    return(fmt % (number or 0, symbols[depth])).strip()
 
 
 def size_to_bytes(number, fmt):
