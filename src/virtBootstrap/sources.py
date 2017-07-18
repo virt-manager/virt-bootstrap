@@ -145,7 +145,7 @@ class DockerSource(object):
             image = image[1:]
 
         # Convert "docker://<image>/" to "docker://<image>"
-        elif image.endswith('/'):
+        if image.endswith('/'):
             image = image[:-1]
 
         return "docker://" + registry + image
