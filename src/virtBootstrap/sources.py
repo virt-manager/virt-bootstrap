@@ -40,6 +40,13 @@ class FileSource(object):
     Extract root filesystem from file.
     """
     def __init__(self, **kwargs):
+        """
+        Bootstrap root filesystem from tarball
+
+        @param uri: Path to tar archive file.
+        @param fmt: Format used to store image [dir, qcow2]
+        @param progress: Instance of the progress module
+        """
         self.path = kwargs['uri'].path
         self.output_format = kwargs['fmt']
         self.progress = kwargs['progress'].update_progress
@@ -86,11 +93,11 @@ class DockerSource(object):
         """
         Bootstrap root filesystem from Docker registry
 
-        @param url: Address of source registry
+        @param uri: Address of source registry
         @param username: Username to access source registry
         @param password: Password to access source registry
         @param fmt: Format used to store image [dir, qcow2]
-        @param insecure: Do not require HTTPS and certificate verification
+        @param not_secure: Do not require HTTPS and certificate verification
         @param no_cache: Whether to store downloaded images or not
         @param progress: Instance of the progress module
         """
