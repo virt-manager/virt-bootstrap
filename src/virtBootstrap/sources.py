@@ -102,31 +102,19 @@ class DockerSource(object):
         @param progress: Instance of the progress module
         """
 
+        self.url = self.gen_valid_uri(kwargs['uri'])
         self.username = kwargs['username']
         self.password = kwargs['password']
         self.output_format = kwargs['fmt']
         self.insecure = kwargs['not_secure']
         self.no_cache = kwargs['no_cache']
         self.progress = kwargs['progress'].update_progress
+        self.images_dir = utils.get_image_dir(self.no_cache)
         self.manifest = None
         self.layers = []
 
         if self.username and not self.password:
             self.password = getpass.getpass()
-
-        registry = kwargs['uri'].netloc
-        image = kwargs['uri'].path
-
-        # Convert "docker:///<image>" to "docker://<image>"
-        if not registry and image.startswith('/'):
-            image = image[1:]
-
-        # Convert "docker://<image>/" to "docker://<image>"
-        elif image.endswith('/'):
-            image = image[:-1]
-
-        self.url = "docker://" + registry + image
-        self.images_dir = utils.get_image_dir(self.no_cache)
 
         self.retrieve_layers_info()
 
@@ -144,6 +132,23 @@ class DockerSource(object):
             sum_type, layer_sum = layer['digest'].split(':')
             file_path = os.path.join(self.images_dir, layer_sum + '.tar')
             self.layers.append([sum_type, layer_sum, file_path, layer['size']])
+
+    def gen_valid_uri(self, uri):
+        """
+        Generate Docker URI in format accepted by skopeo.
+        """
+        registry = uri.netloc
+        image = uri.path
+
+        # Convert "docker:///<image>" to "docker://<image>"
+        if not registry and image.startswith('/'):
+            image = image[1:]
+
+        # Convert "docker://<image>/" to "docker://<image>"
+        elif image.endswith('/'):
+            image = image[:-1]
+
+        return "docker://" + registry + image
 
     def download_image(self):
         """
