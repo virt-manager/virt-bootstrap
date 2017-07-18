@@ -108,6 +108,8 @@ class DockerSource(object):
         self.insecure = kwargs['not_secure']
         self.no_cache = kwargs['no_cache']
         self.progress = kwargs['progress'].update_progress
+        self.manifest = None
+        self.layers = []
 
         if self.username and not self.password:
             self.password = getpass.getpass()
@@ -126,14 +128,18 @@ class DockerSource(object):
         self.url = "docker://" + registry + image
         self.images_dir = utils.get_image_dir(self.no_cache)
 
-        # Retrive manifest from registry
+        self.retrieve_layers_info()
+
+    def retrieve_layers_info(self):
+        """
+        Retrive manifest from registry and get layers' digest,
+        sum_type, size and file_path in a list.
+        """
         self.manifest = utils.get_image_details(self.url, raw=True,
                                                 insecure=self.insecure,
                                                 username=self.username,
                                                 password=self.password)
 
-        # Get layers' digest, sum_type, size and file_path in a list
-        self.layers = []
         for layer in self.manifest['layers']:
             sum_type, layer_sum = layer['digest'].split(':')
             file_path = os.path.join(self.images_dir, layer_sum + '.tar')
