@@ -124,12 +124,12 @@ def bytes_to_size(number):
     return(fmt % (number or 0, symbols[depth]))
 
 
-def size_to_bytes(string, fmt):
+def size_to_bytes(number, fmt):
     """
     Convert human readable formats to bytes.
     """
     formats = {'B': 0, 'KB': 1, 'MB': 2, 'GB': 3, 'TB': 4}
-    return (string * pow(1024, formats[fmt.upper()]) if fmt in formats
+    return (int(number) * pow(1024, formats[fmt.upper()]) if fmt in formats
             else False)
 
 
