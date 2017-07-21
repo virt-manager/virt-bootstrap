@@ -32,6 +32,7 @@ import tempfile
 import logging
 
 from subprocess import CalledProcessError, PIPE, Popen
+import passlib.hosts
 
 # pylint: disable=invalid-name
 # Create logger
@@ -329,6 +330,38 @@ def str2float(element):
         return float(element)
     except ValueError:
         return None
+
+
+def set_root_password(rootfs, password):
+    """
+    Set password on the root user within root filesystem
+    """
+    shadow_file = os.path.join(rootfs, "etc/shadow")
+
+    shadow_file_permissions = os.stat(shadow_file)[0]
+    # Set read-write permissions to shadow file
+    # 438 = 0110110110 = -rw-rw-rw-
+    os.chmod(shadow_file, 438)
+    try:
+        with open(shadow_file) as orig_file:
+            shadow_content = orig_file.read().split('\n')
+
+        for index, line in enumerate(shadow_content):
+            if line.startswith('root'):
+                line_split = line.split(':')
+                line_split[1] = passlib.hosts.linux_context.hash(password)
+                shadow_content[index] = ':'.join(line_split)
+                break
+
+        with open(shadow_file, "w") as new_file:
+            new_file.write('\n'.join(shadow_content))
+
+    except Exception:
+        raise
+
+    finally:
+        # Restore original permissions
+        os.chmod(shadow_file, shadow_file_permissions)
 
 
 def write_progress(prog):

@@ -27,7 +27,6 @@ import logging
 import sys
 import os
 from textwrap import dedent
-from subprocess import CalledProcessError, Popen, PIPE
 try:
     from urlparse import urlparse
 except ImportError:
@@ -70,18 +69,6 @@ def get_source(source_type):
         raise Exception("Invalid image URL scheme: '%s'" % source_type)
 
 
-def set_root_password(rootfs, password):
-    """
-    Set password on the root user in rootfs
-    """
-    users = 'root:%s' % password
-    args = ['chpasswd', '-R', rootfs]
-    chpasswd = Popen(args, stdin=PIPE)
-    chpasswd.communicate(input=users.encode('utf-8'))
-    if chpasswd.returncode != 0:
-        raise CalledProcessError(chpasswd.returncode, cmd=args, output=None)
-
-
 # pylint: disable=too-many-arguments
 def bootstrap(uri, dest,
               fmt='dir',
@@ -117,8 +104,9 @@ def bootstrap(uri, dest,
            no_cache=no_cache,
            progress=prog).unpack(dest)
 
-    if root_password is not None:
-        set_root_password(dest, root_password)
+    if fmt == "dir" and root_password is not None:
+        logger.info("Setting password of the root account")
+        utils.set_root_password(dest, root_password)
 
 
 def set_logging_conf(loglevel=None):
