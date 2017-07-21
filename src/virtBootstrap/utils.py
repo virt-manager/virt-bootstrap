@@ -80,9 +80,9 @@ def execute(cmd):
     output, err = proc.communicate()
 
     if output:
-        logger.debug("Stdout:\n%s", output)
+        logger.debug("Stdout:\n%s", output.decode('utf-8'))
     if err:
-        logger.debug("Stderr:\n%s", err)
+        logger.debug("Stderr:\n%s", err.decode('utf-8'))
 
     if proc.returncode != 0:
         raise CalledProcessError(proc.returncode, cmd_str)
@@ -163,8 +163,8 @@ def get_mime_type(path):
     """
         Get the mime type of a file.
     """
-    return Popen(["/usr/bin/file", "--mime-type", path],
-                 stdout=PIPE).communicate()[0].split()[1]
+    return (Popen(["/usr/bin/file", "--mime-type", path], stdout=PIPE)
+            .stdout.read().decode('utf-8').split()[1])
 
 
 def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
@@ -269,8 +269,9 @@ def get_image_details(src, raw=False,
     proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
     output, error = proc.communicate()
     if error:
-        raise ValueError("Image could not be retrieved:", error)
-    return json.loads(output)
+        raise ValueError("Image could not be retrieved:",
+                         error.decode('utf-8'))
+    return json.loads(output.decode('utf-8'))
 
 
 def is_new_layer_message(line):
@@ -334,7 +335,7 @@ def write_progress(prog):
     # Get terminal width
     try:
         terminal_width = int(Popen(["stty", "size"], stdout=PIPE).stdout
-                             .read().split()[1])
+                             .read().decode('utf-8').split()[1])
     except Exception:
         terminal_width = 80
     # Prepare message

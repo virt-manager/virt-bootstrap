@@ -77,7 +77,7 @@ def set_root_password(rootfs, password):
     users = 'root:%s' % password
     args = ['chpasswd', '-R', rootfs]
     chpasswd = Popen(args, stdin=PIPE)
-    chpasswd.communicate(input=users)
+    chpasswd.communicate(input=users.encode('utf-8'))
     if chpasswd.returncode != 0:
         raise CalledProcessError(chpasswd.returncode, cmd=args, output=None)
 
