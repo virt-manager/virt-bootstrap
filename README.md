@@ -20,4 +20,4 @@ To test changes without installing the package in your machine,
 use the run script. For example to run virt-bootstrap, use a command
 like the following one:
 
-    ./run src/virtBootstrap/virt-bootstrap.py --help
+    ./run src/virtBootstrap/virt_bootstrap.py --help
