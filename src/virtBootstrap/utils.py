@@ -138,8 +138,11 @@ def log_layer_extract(layer, current, total, progress):
     Create log message on layer extract.
     """
     sum_type, sum_value, layer_file, layer_size = layer
-    progress("Extracting layer (%s/%s) with size: %s"
-             % (current, total, bytes_to_size(layer_size)), logger=logger)
+    msg = 'Extracting layer (%s/%s)' % (current, total)
+
+    if layer_size:
+        msg += " with size: %s" % bytes_to_size(layer_size)
+    progress(msg, logger=logger)
     logger.debug('Untar layer: (%s:%s) %s', sum_type, sum_value, layer_file)
 
 

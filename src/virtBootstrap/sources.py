@@ -128,10 +128,22 @@ class DockerSource(object):
                                                 username=self.username,
                                                 password=self.password)
 
-        for layer in self.manifest['layers']:
-            sum_type, layer_sum = layer['digest'].split(':')
+        if self.manifest['schemaVersion'] == 1:
+            layers_list = self.manifest['fsLayers'][::-1]
+            digest_field = 'blobSum'
+        elif self.manifest['schemaVersion'] == 2:
+            layers_list = self.manifest['layers']
+            digest_field = 'digest'
+        else:
+            raise ValueError('Unsupported manifest schema.')
+
+        for layer in layers_list:
+            layer_digest = layer[digest_field]
+            layer_size = layer['size'] if 'size' in layer else None
+
+            sum_type, layer_sum = layer_digest.split(':')
             file_path = os.path.join(self.images_dir, layer_sum + '.tar')
-            self.layers.append([sum_type, layer_sum, file_path, layer['size']])
+            self.layers.append([sum_type, layer_sum, file_path, layer_size])
 
     def gen_valid_uri(self, uri):
         """
