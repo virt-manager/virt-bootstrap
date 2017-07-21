@@ -147,8 +147,7 @@ def main():
     parser.add_argument("uri",
                         help=_("URI of container image"))
     parser.add_argument("dest",
-                        help=_("Destination folder"
-                               "where image files to be extracted"))
+                        help=_("Destination folder"))
     parser.add_argument("--not-secure", action='store_true',
                         help=_("Ignore HTTPS errors"))
     parser.add_argument("-u", "--username", default=None,
@@ -156,7 +155,7 @@ def main():
     parser.add_argument("-p", "--password", default=None,
                         help=_("Password for accessing the source registry"))
     parser.add_argument("--root-password", default=None,
-                        help=_("Root password to set in the created rootfs"))
+                        help=_("Set root password"))
     parser.add_argument("--no-cache", action="store_true",
                         help=_("Do not store downloaded Docker images"))
     parser.add_argument("-f", "--format", default='dir',
@@ -166,12 +165,10 @@ def main():
                         const=logging.DEBUG, help=_("Show debug messages"))
     parser.add_argument("-q", "--quiet", action="store_const", dest="loglevel",
                         const=logging.WARNING,
-                        help=_("Suppresses messages notifying about"
-                               "current state or actions of virt-bootstrap"))
+                        help=_("Don't print progress messages"))
     parser.add_argument("--status-only", action="store_const",
                         const=utils.write_progress,
-                        help=_("Show only the current status and progress"
-                               "of virt-bootstrap"))
+                        help=_("Show only progress information"))
 
     # TODO add UID / GID mapping parameters
 
