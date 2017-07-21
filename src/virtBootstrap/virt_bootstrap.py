@@ -54,7 +54,7 @@ except IOError:
 
 # pylint: disable=invalid-name
 # Create logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('virtBootstrap.virt_bootstrap')
 
 
 def get_source(source_type):
