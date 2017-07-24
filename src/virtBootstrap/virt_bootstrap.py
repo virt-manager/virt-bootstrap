@@ -69,12 +69,108 @@ def get_source(source_type):
         raise Exception("Invalid image URL scheme: '%s'" % source_type)
 
 
+# The implementation for remapping ownership of all files inside a
+# container's rootfs is inspired by the tool uidmapshift:
+#
+# Original author: Serge Hallyn <serge.hallyn@ubuntu.com>
+# Original license: GPLv2
+# http://bazaar.launchpad.net/%7Eserge-hallyn/+junk/nsexec/view/head:/uidmapshift.c
+
+def get_map_id(old_id, opts):
+    """
+    Calculate new map_id.
+    """
+    if old_id >= opts['first'] and old_id < opts['last']:
+        return old_id + opts['offset']
+    return -1
+
+
+def parse_idmap(idmap):
+    """
+    Parse user input to 'start', 'target' and 'count' values.
+
+    Example:
+        ['0:1000:10', '500:500:10']
+    is converted to:
+        [[0, 1000, 10], [500, 500, 10]]
+    """
+    if not isinstance(idmap, list) or idmap == []:
+        return None
+    try:
+        idmap_list = []
+        for x in idmap:
+            start, target, count = x.split(':')
+            idmap_list.append([int(start), int(target), int(count)])
+
+        return idmap_list
+    except Exception:
+        raise ValueError("Invalid UID/GID mapping value: %s" % idmap)
+
+
+def get_mapping_opts(mapping):
+    """
+    Get range options from UID/GID mapping
+    """
+    start = mapping[0] if mapping[0] > -1 else 0
+    target = mapping[1] if mapping[1] > -1 else 0
+    count = mapping[2] if mapping[2] > -1 else 1
+
+    opts = {
+        'first': start,
+        'last': start + count,
+        'offset': target - start
+    }
+    return opts
+
+
+def map_id(path, map_uid, map_gid):
+    """
+    Remapping ownership of all files inside a container's rootfs.
+
+    map_gid and map_uid: Contain integers in a list with format:
+        [<start>, <target>, <count>]
+    """
+    if map_uid:
+        uid_opts = get_mapping_opts(map_uid)
+    if map_gid:
+        gid_opts = get_mapping_opts(map_gid)
+
+    for root, _ignore, files in os.walk(os.path.realpath(path)):
+        for name in [root] + files:
+            file_path = os.path.join(root, name)
+
+            stat_info = os.lstat(file_path)
+            old_uid = stat_info.st_uid
+            old_gid = stat_info.st_gid
+
+            new_uid = get_map_id(old_uid, uid_opts) if map_uid else -1
+            new_gid = get_map_id(old_gid, gid_opts) if map_gid else -1
+            os.lchown(file_path, new_uid, new_gid)
+
+
+def mapping_uid_gid(dest, uid_map, gid_map):
+    """
+    Mapping ownership for each uid_map and gid_map.
+    """
+    len_diff = len(uid_map) - len(gid_map)
+
+    if len_diff < 0:
+        uid_map += [None] * abs(len_diff)
+    elif len_diff > 0:
+        gid_map += [None] * len_diff
+
+    for uid, gid in zip(uid_map, gid_map):
+        map_id(dest, uid, gid)
+
+
 # pylint: disable=too-many-arguments
 def bootstrap(uri, dest,
               fmt='dir',
               username=None,
               password=None,
               root_password=None,
+              uid_map=None,
+              gid_map=None,
               not_secure=False,
               no_cache=False,
               progress_cb=None):
@@ -104,9 +200,14 @@ def bootstrap(uri, dest,
            no_cache=no_cache,
            progress=prog).unpack(dest)
 
-    if fmt == "dir" and root_password is not None:
-        logger.info("Setting password of the root account")
-        utils.set_root_password(dest, root_password)
+    if fmt == "dir":
+        if root_password is not None:
+            logger.info("Setting password of the root account")
+            utils.set_root_password(dest, root_password)
+
+        if uid_map or gid_map:
+            logger.info("Mapping UID/GID")
+            mapping_uid_gid(dest, uid_map, gid_map)
 
 
 def set_logging_conf(loglevel=None):
@@ -156,6 +257,15 @@ def main():
                         help=_("Password for accessing the source registry"))
     parser.add_argument("--root-password", default=None,
                         help=_("Set root password"))
+    parser.add_argument("--uidmap", default=None, action='append',
+                        metavar="<start>:<target>:<count>",
+                        help=_("Map UIDs"))
+    parser.add_argument("--gidmap", default=None, action='append',
+                        metavar="<start>:<target>:<count>",
+                        help=_("Map GIDs"))
+    parser.add_argument("--idmap", default=None, action='append',
+                        metavar="<start>:<target>:<count>",
+                        help=_("Map both UIDs/GIDs"))
     parser.add_argument("--no-cache", action="store_true",
                         help=_("Do not store downloaded Docker images"))
     parser.add_argument("-f", "--format", default='dir',
@@ -170,14 +280,19 @@ def main():
                         const=utils.write_progress,
                         help=_("Show only progress information"))
 
-    # TODO add UID / GID mapping parameters
-
     try:
         args = parser.parse_args()
 
         if not args.status_only:
             # Configure logging lovel/format
             set_logging_conf(args.loglevel)
+
+        uid_map = parse_idmap(args.idmap) if args.idmap else []
+        gid_map = list(uid_map) if args.idmap else []
+        if args.uidmap:
+            uid_map += parse_idmap(args.uidmap)
+        if args.gidmap:
+            gid_map += parse_idmap(args.gidmap)
 
         # do the job here!
         bootstrap(uri=args.uri,
@@ -186,6 +301,8 @@ def main():
                   username=args.username,
                   password=args.password,
                   root_password=args.root_password,
+                  uid_map=uid_map,
+                  gid_map=gid_map,
                   not_secure=args.not_secure,
                   no_cache=args.no_cache,
                   progress_cb=args.status_only)
