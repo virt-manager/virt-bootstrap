@@ -50,7 +50,7 @@ class CheckPylint(Command):
         """
 
         res = 0
-        files = ' '.join(["setup.py", "src/virtBootstrap/*.py"])
+        files = ' '.join(["setup.py", "src/virtBootstrap/*.py", "tests/*.py"])
         output_format = "colorized" if sys.stdout.isatty() else "text"
 
         print(">>> Running pycodestyle ...")
@@ -82,6 +82,7 @@ setup(
     keywords='virtualization container rootfs',
     package_dir={"": "src"},
     packages=['virtBootstrap'],
+    test_suite='tests',
     entry_points={
         'console_scripts': [
             'virt-bootstrap=virtBootstrap.virt_bootstrap:main',
@@ -116,6 +117,8 @@ setup(
     # virt-bootstrap uses passlib to compute the hash of
     # root password for root file system.
     install_requires=['passlib>=1.6.1'],
+
+    tests_require=['mock>=2.0'],
 
     extras_require={
         'dev': [

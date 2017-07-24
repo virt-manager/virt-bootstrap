@@ -21,3 +21,15 @@ use the run script. For example to run virt-bootstrap, use a command
 like the following one:
 
     ./run src/virtBootstrap/virt_bootstrap.py --help
+
+The following commands will be useful for anyone writing patches:
+
+    ./setup.py test      # Run local unit test suite
+    ./setup.py pylint    # Run a pylint script against the codebase
+
+Any patches shouldn't change the output of 'test' or 'pylint'. The 'pylint' requires `pylint` and `pycodestyle` to be installed.
+
+If [coverage](https://pypi.python.org/pypi/coverage/) is installed, you can generate report using:
+
+    coverage run --source=virtBootstrap ./setup.py test
+    coverage report
