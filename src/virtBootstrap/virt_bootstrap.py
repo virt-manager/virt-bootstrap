@@ -200,14 +200,13 @@ def bootstrap(uri, dest,
            no_cache=no_cache,
            progress=prog).unpack(dest)
 
-    if fmt == "dir":
-        if root_password is not None:
-            logger.info("Setting password of the root account")
-            utils.set_root_password(dest, root_password)
+    if root_password is not None:
+        logger.info("Setting password of the root account")
+        utils.set_root_password(fmt, dest, root_password)
 
-        if uid_map or gid_map:
-            logger.info("Mapping UID/GID")
-            mapping_uid_gid(dest, uid_map, gid_map)
+    if fmt == "dir" and uid_map or gid_map:
+        logger.info("Mapping UID/GID")
+        mapping_uid_gid(dest, uid_map, gid_map)
 
 
 def set_logging_conf(loglevel=None):

@@ -30,6 +30,7 @@ import os
 import sys
 import tempfile
 import logging
+import re
 
 from subprocess import CalledProcessError, PIPE, Popen
 import passlib.hosts
@@ -332,7 +333,7 @@ def str2float(element):
         return None
 
 
-def set_root_password(rootfs, password):
+def set_root_password_in_rootfs(rootfs, password):
     """
     Set password on the root user within root filesystem
     """
@@ -362,6 +363,29 @@ def set_root_password(rootfs, password):
     finally:
         # Restore original permissions
         os.chmod(shadow_file, shadow_file_permissions)
+
+
+def set_root_password_in_image(image, password):
+    """
+    Set password on the root user within image
+    """
+    password_hash = passlib.hosts.linux_context.hash(password)
+    execute(['virt-edit',
+             '-a', image, '/etc/shadow',
+             '-e', 's,^root:.*?:,root:%s:,' % re.escape(password_hash)])
+
+
+def set_root_password(fmt, dest, root_password):
+    """
+    Set root password
+    """
+    if fmt == "dir":
+        set_root_password_in_rootfs(dest, root_password)
+    elif fmt == "qcow2":
+        layers = [layer for layer in os.listdir(dest)
+                  if layer.startswith('layer-')]
+        set_root_password_in_image(os.path.join(dest, max(layers)),
+                                   root_password)
 
 
 def write_progress(prog):
