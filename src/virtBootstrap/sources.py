@@ -264,7 +264,7 @@ class DockerSource(object):
         # Without `make_async`, `fd.read` in `read_async` blocks.
         utils.make_async(proc.stdout)
         if not self.parse_output(proc):
-            raise CalledProcessError(cmd, proc.stderr.read())
+            raise CalledProcessError(proc.returncode, ' '.join(cmd))
 
     def validate_image_layers(self):
         """
