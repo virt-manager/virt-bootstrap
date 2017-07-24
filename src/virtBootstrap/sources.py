@@ -225,7 +225,15 @@ class DockerSource(object):
         total size of image layer.
 
         Calculate percentage and update the progress of virt-bootstrap.
+
+        @param current_l: Number of currently downloaded layer
+        @param total_l: Total number of layers
+        @param line_split: A list with format:
+                [<d_size>, <d_format>, '/', <t_size>, <t_format>, <progress>]
+            Example:
+                ['5.92', 'MB', '/', '44.96', 'MB', '[===>-----------------]']
         """
+
         if not (len(line_split) > 4 and isinstance(line_split, list)):
             return
 
@@ -237,9 +245,13 @@ class DockerSource(object):
             total_size = utils.size_to_bytes(t_size, t_format)
             if downloaded_size and total_size:
                 try:
-                    self.progress(value=(50
-                                         * downloaded_size / total_size
-                                         * float(current_l)/total_l))
+                    frac = float(1) / total_l
+                    downloaded = float(downloaded_size) / total_size
+                    layer_frac = float(max(0, current_l - 1)) / total_l
+
+                    progress = 50 * (layer_frac + (frac * downloaded))
+
+                    self.progress(value=progress)
                 except Exception:
                     pass  # Ignore failures
 
