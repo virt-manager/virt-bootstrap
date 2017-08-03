@@ -48,7 +48,7 @@ class FileSource(object):
         @param progress: Instance of the progress module
         """
         self.path = kwargs['uri'].path
-        self.output_format = kwargs['fmt']
+        self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
         self.progress = kwargs['progress'].update_progress
 
     def unpack(self, dest):
@@ -103,11 +103,11 @@ class DockerSource(object):
         """
 
         self.url = self.gen_valid_uri(kwargs['uri'])
-        self.username = kwargs['username']
-        self.password = kwargs['password']
-        self.output_format = kwargs['fmt']
-        self.insecure = kwargs['not_secure']
-        self.no_cache = kwargs['no_cache']
+        self.username = kwargs.get('username', None)
+        self.password = kwargs.get('password', None)
+        self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
+        self.insecure = kwargs.get('not_secure', False)
+        self.no_cache = kwargs.get('no_cache', False)
         self.progress = kwargs['progress'].update_progress
         self.images_dir = utils.get_image_dir(self.no_cache)
         self.manifest = None
