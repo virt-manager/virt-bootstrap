@@ -38,6 +38,8 @@ import passlib.hosts
 # pylint: disable=invalid-name
 # Create logger
 logger = logging.getLogger(__name__)
+
+DEFAULT_OUTPUT_FORMAT = 'dir'
 # Default virtual size of qcow2 image
 DEF_QCOW2_SIZE = '5G'
 if os.geteuid() == 0:

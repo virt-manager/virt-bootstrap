@@ -165,7 +165,7 @@ def mapping_uid_gid(dest, uid_map, gid_map):
 
 # pylint: disable=too-many-arguments
 def bootstrap(uri, dest,
-              fmt='dir',
+              fmt=utils.DEFAULT_OUTPUT_FORMAT,
               username=None,
               password=None,
               root_password=None,
@@ -267,7 +267,7 @@ def main():
                         help=_("Map both UIDs/GIDs"))
     parser.add_argument("--no-cache", action="store_true",
                         help=_("Do not store downloaded Docker images"))
-    parser.add_argument("-f", "--format", default='dir',
+    parser.add_argument("-f", "--format", default=utils.DEFAULT_OUTPUT_FORMAT,
                         choices=['dir', 'qcow2'],
                         help=_("Format to be used for the root filesystem"))
     parser.add_argument("-d", "--debug", action="store_const", dest="loglevel",
