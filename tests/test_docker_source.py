@@ -104,14 +104,14 @@ class TestDockerSource(unittest.TestCase):
         kwargs['username'] = 'test'
 
         with mock.patch('virtBootstrap.utils.get_image_dir'):
-            with mock.patch('virtBootstrap.sources.getpass') as m_getpass:
-                m_getpass.getpass.return_value = test_password
+            with mock.patch('getpass.getpass') as m_getpass:
+                m_getpass.return_value = test_password
                 with mock.patch.multiple('virtBootstrap.sources.DockerSource',
                                          retrieve_layers_info=mock.DEFAULT,
                                          gen_valid_uri=mock.DEFAULT):
                     src_instance = sources.DockerSource(**kwargs)
 
-        m_getpass.getpass.assert_called_once()
+        m_getpass.assert_called_once()
         self.assertIs(test_password, src_instance.password)
 
     ###################################
@@ -375,7 +375,8 @@ class TestDockerSource(unittest.TestCase):
         """
         m_self = mock.Mock(spec=sources.DockerSource)
         m_self.parse_output.return_value = parse_output_return
-        with mock.patch.multiple('virtBootstrap.sources.subprocess',
+        with mock.patch.multiple('virtBootstrap.sources.'
+                                 'docker_source.subprocess',
                                  Popen=mock.DEFAULT,
                                  PIPE=mock.DEFAULT) as mocked:
             with mock.patch('virtBootstrap.utils.make_async') as m_make_async:
@@ -402,7 +403,8 @@ class TestDockerSource(unittest.TestCase):
         Ensures that read_skopeo_progress() raise CalledProcessError
         when parse_output() returns false.
         """
-        with self.assertRaises(sources.subprocess.CalledProcessError):
+        with self.assertRaises(sources.docker_source
+                               .subprocess.CalledProcessError):
             self._mock_read_skopeo_progress('test', False)
 
     ###################################
@@ -587,7 +589,7 @@ class TestDockerSource(unittest.TestCase):
         for fmt, patch_mthd in zip(output_formats, patch_methods):
             m_self = self._mock_docker_source()
             m_self.no_cache = True
-            with mock.patch('virtBootstrap.sources.shutil.rmtree') as m_shutil:
+            with mock.patch('shutil.rmtree') as m_shutil:
                 self._unpack_test_fmt(fmt, patch_mthd, m_self=m_self)
             m_shutil.assert_called_once_with(m_self.images_dir)
 

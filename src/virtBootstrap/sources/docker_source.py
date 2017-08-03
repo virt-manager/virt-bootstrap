@@ -16,8 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Class definitions which process container image or
-archive from source and unpack them in destination directory.
+DockerSource aim is to download container image from Docker registry and
+extract the layers of root file system into destination directory or qcow2
+image with backing chains.
 """
 
 import select
@@ -33,54 +34,6 @@ from virtBootstrap import utils
 # pylint: disable=invalid-name
 # Create logger
 logger = logging.getLogger(__name__)
-
-
-class FileSource(object):
-    """
-    Extract root filesystem from file.
-    """
-    def __init__(self, **kwargs):
-        """
-        Bootstrap root filesystem from tarball
-
-        @param uri: Path to tar archive file.
-        @param fmt: Format used to store image [dir, qcow2]
-        @param progress: Instance of the progress module
-        """
-        self.path = kwargs['uri'].path
-        self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
-        self.progress = kwargs['progress'].update_progress
-
-    def unpack(self, dest):
-        """
-        Safely extract root filesystem from tarball
-
-        @param dest: Directory path where the files to be extraced
-        """
-
-        if not os.path.isfile(self.path):
-            raise Exception('Invalid file source "%s"' % self.path)
-
-        if self.output_format == 'dir':
-            self.progress("Extracting files into destination directory",
-                          value=0, logger=logger)
-            utils.safe_untar(self.path, dest)
-
-        elif self.output_format == 'qcow2':
-            # Remove the old path
-            file_name = os.path.basename(self.path)
-            qcow2_file = os.path.realpath('{}/{}.qcow2'.format(dest,
-                                                               file_name))
-
-            self.progress("Extracting files into qcow2 image", value=0,
-                          logger=logger)
-            utils.create_qcow2(self.path, qcow2_file)
-        else:
-            raise Exception("Unknown format:" + self.output_format)
-
-        self.progress("Extraction completed successfully!", value=100,
-                      logger=logger)
-        logger.info("Files are stored in: " + dest)
 
 
 class DockerSource(object):
