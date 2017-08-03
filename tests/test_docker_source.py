@@ -139,22 +139,22 @@ class TestDockerSource(unittest.TestCase):
         Ensures that retrieve_layers_info() calls get_image_details()
         with all passed arguments.
         """
-        src_kwargs = {'uri': '',
-                      'fmt': 'dir',
-                      'not_secure': False,
-                      'no_cache': False,
-                      'progress': mock.Mock(),
-                      'username': 'username',
-                      'password': 'password'}
+        src_kwargs = {
+            'uri': '',
+            'progress': mock.Mock()
+        }
 
         manifest = {'schemaVersion': 2, 'layers': []}
         (src_instance,
          m_uri, m_utils) = self._mock_retrieve_layers_info(manifest,
                                                            src_kwargs)
 
-        kwargs = {arg: getattr(src_instance, arg)
-                  for arg in ['insecure', 'username', 'password']}
-        kwargs['raw'] = True
+        kwargs = {
+            'insecure': src_instance.insecure,
+            'username': src_instance.username,
+            'password': src_instance.password,
+            'raw': True
+        }
         m_utils['get_image_details'].assert_called_once_with(m_uri(), **kwargs)
 
     def test_retrieve_layers_info_schema_version_1(self):
@@ -163,9 +163,10 @@ class TestDockerSource(unittest.TestCase):
         from manifest with schema version 1 a list with format:
             ["digest", "sum_type", "file_path", "size"].
         """
-        args = ['uri', 'fmt', 'not_secure', 'password', 'username', 'no_cache']
-        kwargs = {arg: arg for arg in args}
-        kwargs['progress'] = mock.Mock()
+        kwargs = {
+            'uri': '',
+            'progress': mock.Mock()
+        }
 
         manifest = {
             'schemaVersion': 1,
@@ -191,9 +192,10 @@ class TestDockerSource(unittest.TestCase):
         from manifest with schema version 2 a list with format:
             ["digest", "sum_type", "file_path", "size"].
         """
-        args = ['uri', 'fmt', 'not_secure', 'password', 'username', 'no_cache']
-        kwargs = {arg: arg for arg in args}
-        kwargs['progress'] = mock.Mock()
+        kwargs = {
+            'uri': '',
+            'progress': mock.Mock()
+        }
 
         manifest = {
             'schemaVersion': 2,
@@ -218,9 +220,10 @@ class TestDockerSource(unittest.TestCase):
         Ensures that retrieve_layers_info() calls get_image_details()
         with all passed arguments.
         """
-        args = ['uri', 'fmt', 'not_secure', 'password', 'username', 'no_cache']
-        kwargs = {arg: arg for arg in args}
-        kwargs['progress'] = mock.Mock()
+        kwargs = {
+            'uri': '',
+            'progress': mock.Mock()
+        }
 
         manifest = {'schemaVersion': 3}
         with self.assertRaises(ValueError):
