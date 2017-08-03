@@ -11,7 +11,7 @@ Dependencies
  * python 2 or 3
  * skopeo
  * virt-sandbox
- * libguestfs
+ * libguestfs python binding
 
 Hacking
 -------

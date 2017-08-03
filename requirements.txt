@@ -1,4 +1,8 @@
 --index-url https://pypi.python.org/simple/
 
 passlib>=1.6.1
+guestfs
+
+--find-links 'http://download.libguestfs.org/python#egg=guestfs'
+--trusted-host 'download.libguestfs.org'
 -e .
