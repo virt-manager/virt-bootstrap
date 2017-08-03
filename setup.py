@@ -80,7 +80,7 @@ setuptools.setup(
     # What does your project relate to?
     keywords='virtualization container rootfs',
     package_dir={"": "src"},
-    packages=['virtBootstrap'],
+    packages=setuptools.find_packages('src'),
     test_suite='tests',
     entry_points={
         'console_scripts': [
