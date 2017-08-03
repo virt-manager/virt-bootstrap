@@ -25,7 +25,7 @@ import shutil
 import getpass
 import os
 import logging
-from subprocess import CalledProcessError, PIPE, Popen
+import subprocess
 
 from virtBootstrap import utils
 
@@ -259,12 +259,17 @@ class DockerSource(object):
         """
         Parse the output from skopeo copy to track download progress.
         """
-        proc = Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
 
         # Without `make_async`, `fd.read` in `read_async` blocks.
         utils.make_async(proc.stdout)
         if not self.parse_output(proc):
-            raise CalledProcessError(proc.returncode, ' '.join(cmd))
+            raise subprocess.CalledProcessError(proc.returncode, ' '.join(cmd))
 
     def validate_image_layers(self):
         """

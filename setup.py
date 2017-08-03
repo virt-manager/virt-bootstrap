@@ -9,9 +9,8 @@ based on setuptools.
 import codecs
 import os
 import sys
-from subprocess import call
-from setuptools import Command
-from setuptools import setup
+import subprocess
+import setuptools
 
 
 def read(fname):
@@ -23,7 +22,7 @@ def read(fname):
         return fobj.read()
 
 
-class CheckPylint(Command):
+class CheckPylint(setuptools.Command):
     """
     Check python source files with pylint and pycodestyle.
     """
@@ -55,7 +54,7 @@ class CheckPylint(Command):
 
         print(">>> Running pycodestyle ...")
         cmd = "pycodestyle "
-        if (call(cmd + files, shell=True) != 0):
+        if (subprocess.call(cmd + files, shell=True) != 0):
             res = 1
 
         print(">>> Running pylint ...")
@@ -63,13 +62,13 @@ class CheckPylint(Command):
         if self.errors_only:
             args = "-E"
         cmd = "pylint %s --output-format=%s " % (args, format(output_format))
-        if (call(cmd + files, shell=True) != 0):
+        if (subprocess.call(cmd + files, shell=True) != 0):
             res = 1
 
         sys.exit(res)
 
 
-setup(
+setuptools.setup(
     name='virt-bootstrap',
     version='0.1.0',
     author='Cedric Bosdonnat',

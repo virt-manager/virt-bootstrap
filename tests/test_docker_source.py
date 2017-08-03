@@ -375,7 +375,7 @@ class TestDockerSource(unittest.TestCase):
         """
         m_self = mock.Mock(spec=sources.DockerSource)
         m_self.parse_output.return_value = parse_output_return
-        with mock.patch.multiple('virtBootstrap.sources',
+        with mock.patch.multiple('virtBootstrap.sources.subprocess',
                                  Popen=mock.DEFAULT,
                                  PIPE=mock.DEFAULT) as mocked:
             with mock.patch('virtBootstrap.utils.make_async') as m_make_async:
@@ -402,7 +402,7 @@ class TestDockerSource(unittest.TestCase):
         Ensures that read_skopeo_progress() raise CalledProcessError
         when parse_output() returns false.
         """
-        with self.assertRaises(sources.CalledProcessError):
+        with self.assertRaises(sources.subprocess.CalledProcessError):
             self._mock_read_skopeo_progress('test', False)
 
     ###################################

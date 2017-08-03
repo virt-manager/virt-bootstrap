@@ -90,12 +90,12 @@ class TestUtils(unittest.TestCase):
         """
         with mock.patch.multiple(utils,
                                  logger=mock.DEFAULT,
-                                 Popen=mock.DEFAULT) as mocked:
+                                 subprocess=mock.DEFAULT) as mocked:
             cmd = ['foo']
             output, err = 'test_out', 'test_err'
 
-            mocked['Popen'].return_value.returncode = 0
-            (mocked['Popen'].return_value
+            mocked['subprocess'].Popen.return_value.returncode = 0
+            (mocked['subprocess'].Popen.return_value
              .communicate.return_value) = (output.encode(), err.encode())
 
             utils.execute(cmd)
@@ -108,10 +108,10 @@ class TestUtils(unittest.TestCase):
         Ensures that execute() raise CalledProcessError exception when the
         exit code of process is not 0.
         """
-        with mock.patch('virtBootstrap.utils.Popen') as m_popen:
+        with mock.patch('virtBootstrap.utils.subprocess.Popen') as m_popen:
             m_popen.return_value.returncode = 1
             m_popen.return_value.communicate.return_value = (b'output', b'err')
-            with self.assertRaises(utils.CalledProcessError):
+            with self.assertRaises(utils.subprocess.CalledProcessError):
                 utils.execute(['foo'])
 
     ###################################
@@ -191,7 +191,7 @@ class TestUtils(unittest.TestCase):
     ###################################
     # Tests for: get_mime_type()
     ###################################
-    @mock.patch('virtBootstrap.utils.Popen')
+    @mock.patch('virtBootstrap.utils.subprocess.Popen')
     def test_utils_get_mime_type(self, m_popen):
         """
         Ensures that get_mime_type() returns the detected MIME type
@@ -202,8 +202,10 @@ class TestUtils(unittest.TestCase):
         stdout = ('%s: %s' % (path, mime)).encode()
         m_popen.return_value.stdout.read.return_value = stdout
         self.assertEqual(utils.get_mime_type(path), mime)
-        m_popen.assert_called_once_with(["/usr/bin/file", "--mime-type", path],
-                                        stdout=utils.PIPE)
+        m_popen.assert_called_once_with(
+            ["/usr/bin/file", "--mime-type", path],
+            stdout=utils.subprocess.PIPE
+        )
 
     ###################################
     # Tests for: untar_layers()
@@ -356,7 +358,7 @@ class TestUtils(unittest.TestCase):
     ###################################
     # Tests for: get_image_details()
     ###################################
-    @mock.patch('virtBootstrap.utils.Popen')
+    @mock.patch('virtBootstrap.utils.subprocess.Popen')
     def test_utils_get_image_details_raise_error_on_fail(self, m_popen):
         """
         Ensures that get_image_details() throws ValueError exception
@@ -367,7 +369,7 @@ class TestUtils(unittest.TestCase):
         with self.assertRaises(ValueError):
             utils.get_image_details(src)
 
-    @mock.patch('virtBootstrap.utils.Popen')
+    @mock.patch('virtBootstrap.utils.subprocess.Popen')
     def test_utils_get_image_details_return_json_obj_on_success(self, m_popen):
         """
         Ensures that get_image_details() returns python dictionary which
@@ -393,7 +395,7 @@ class TestUtils(unittest.TestCase):
                '--tls-verify=false',
                "--creds=%s:%s" % (username, password)]
 
-        with mock.patch.multiple(utils,
+        with mock.patch.multiple(utils.subprocess,
                                  Popen=mock.DEFAULT,
                                  PIPE=mock.DEFAULT) as mocked:
             mocked['Popen'].return_value.communicate.return_value = [b'{}',
@@ -457,7 +459,11 @@ class TestUtils(unittest.TestCase):
         Ensures that make_async() sets O_NONBLOCK flag on PIPE.
         """
 
-        pipe = utils.Popen(["echo"], stdout=utils.PIPE).stdout
+        pipe = utils.subprocess.Popen(
+            ["echo"],
+            stdout=utils.subprocess.PIPE
+        ).stdout
+
         fd = pipe.fileno()
         F_GETFL = utils.fcntl.F_GETFL
         O_NONBLOCK = utils.os.O_NONBLOCK
@@ -661,17 +667,18 @@ class TestUtils(unittest.TestCase):
         terminal_width = 120
         prog = {'status': 'status', 'value': 0}
         with mock.patch.multiple(utils,
-                                 Popen=mock.DEFAULT,
-                                 PIPE=mock.DEFAULT,
+                                 subprocess=mock.DEFAULT,
                                  sys=mock.DEFAULT) as mocked:
 
-            (mocked['Popen'].return_value.stdout
+            (mocked['subprocess'].Popen.return_value.stdout
              .read.return_value) = ("20 %s" % terminal_width).encode()
 
             utils.write_progress(prog)
 
-        mocked['Popen'].assert_called_once_with(["stty", "size"],
-                                                stdout=mocked['PIPE'])
+        mocked['subprocess'].Popen.assert_called_once_with(
+            ["stty", "size"],
+            stdout=mocked['subprocess'].PIPE
+        )
         output_message = mocked['sys'].stdout.write.call_args[0][0]
         mocked['sys'].stdout.write.assert_called_once()
         self.assertEqual(len(output_message), terminal_width + 1)
@@ -685,9 +692,10 @@ class TestUtils(unittest.TestCase):
         """
         default_terminal_width = 80
         prog = {'status': 'status', 'value': 0}
-        with mock.patch.multiple(utils, Popen=mock.DEFAULT,
+        with mock.patch.multiple(utils,
+                                 subprocess=mock.DEFAULT,
                                  sys=mock.DEFAULT) as mocked:
-            mocked['Popen'].side_effect = Exception()
+            mocked['subprocess'].Popen.side_effect = Exception()
             utils.write_progress(prog)
 
         self.assertEqual(len(mocked['sys'].stdout.write.call_args[0][0]),

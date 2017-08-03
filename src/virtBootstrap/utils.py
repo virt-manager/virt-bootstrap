@@ -27,12 +27,12 @@ import fcntl
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import logging
 import re
 
-from subprocess import CalledProcessError, PIPE, Popen
 import passlib.hosts
 
 # pylint: disable=invalid-name
@@ -80,7 +80,11 @@ def execute(cmd):
     cmd_str = ' '.join(cmd)
     logger.debug("Call command:\n%s", cmd_str)
 
-    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
     output, err = proc.communicate()
 
     if output:
@@ -89,7 +93,7 @@ def execute(cmd):
         logger.debug("Stderr:\n%s", err.decode('utf-8'))
 
     if proc.returncode != 0:
-        raise CalledProcessError(proc.returncode, cmd_str)
+        raise subprocess.CalledProcessError(proc.returncode, cmd_str)
 
 
 def safe_untar(src, dest):
@@ -170,8 +174,12 @@ def get_mime_type(path):
     """
         Get the mime type of a file.
     """
-    return (Popen(["/usr/bin/file", "--mime-type", path], stdout=PIPE)
-            .stdout.read().decode('utf-8').split()[1])
+    return (
+        subprocess.Popen(
+            ["/usr/bin/file", "--mime-type", path],
+            stdout=subprocess.PIPE
+        ).stdout.read().decode('utf-8').split()[1]
+    )
 
 
 def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
@@ -273,7 +281,11 @@ def get_image_details(src, raw=False,
         cmd.append('--tls-verify=false')
     if username and password:
         cmd.append("--creds=%s:%s" % (username, password))
-    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
     output, error = proc.communicate()
     if error:
         raise ValueError("Image could not be retrieved:",
@@ -396,8 +408,12 @@ def write_progress(prog):
     """
     # Get terminal width
     try:
-        terminal_width = int(Popen(["stty", "size"], stdout=PIPE).stdout
-                             .read().decode('utf-8').split()[1])
+        terminal_width = int(
+            subprocess.Popen(
+                ["stty", "size"],
+                stdout=subprocess.PIPE
+            ).stdout.read().decode('utf-8').split()[1]
+        )
     except Exception:
         terminal_width = 80
     # Prepare message
