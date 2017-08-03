@@ -1,0 +1,4 @@
+--index-url https://pypi.python.org/simple/
+
+passlib>=1.6.1
+-e .

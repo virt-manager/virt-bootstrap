@@ -113,10 +113,6 @@ setuptools.setup(
         'pylint': CheckPylint
     },
 
-    # virt-bootstrap uses passlib to compute the hash of
-    # root password for root file system.
-    install_requires=['passlib>=1.6.1'],
-
     tests_require=['mock>=2.0'],
 
     extras_require={
