@@ -366,6 +366,19 @@ def str2float(element):
         return None
 
 
+def set_password_in_shadow_content(shadow_content, password, user='root'):
+    """
+    Find a user the content of shadow file and set a hash of the password.
+    """
+    for index, line in enumerate(shadow_content):
+        if line.startswith(user):
+            line_split = line.split(':')
+            line_split[1] = passlib.hosts.linux_context.hash(password)
+            shadow_content[index] = ':'.join(line_split)
+            break
+    return shadow_content
+
+
 def set_root_password_in_rootfs(rootfs, password):
     """
     Set password on the root user within root filesystem
@@ -380,15 +393,10 @@ def set_root_password_in_rootfs(rootfs, password):
         with open(shadow_file) as orig_file:
             shadow_content = orig_file.read().split('\n')
 
-        for index, line in enumerate(shadow_content):
-            if line.startswith('root'):
-                line_split = line.split(':')
-                line_split[1] = passlib.hosts.linux_context.hash(password)
-                shadow_content[index] = ':'.join(line_split)
-                break
+        new_content = set_password_in_shadow_content(shadow_content, password)
 
         with open(shadow_file, "w") as new_file:
-            new_file.write('\n'.join(shadow_content))
+            new_file.write('\n'.join(new_content))
 
     except Exception:
         raise
