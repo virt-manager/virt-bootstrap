@@ -174,6 +174,7 @@ def set_logging_conf(loglevel=None):
 def main():
     parser = argparse.ArgumentParser(
         description=_("Container bootstrapping tool"),
+        conflict_handler='resolve',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=dedent(_('''
                             Example supported URI formats:
@@ -185,43 +186,118 @@ def main():
                             ----------------------------------------
 
                         ''')))
-    parser.add_argument("uri",
-                        help=_("URI of container image"))
-    parser.add_argument("dest",
-                        help=_("Destination folder"))
-    parser.add_argument("--not-secure", action='store_true',
-                        help=_("Ignore HTTPS errors"))
-    parser.add_argument("-u", "--username", default=None,
-                        help=_("Username for accessing the source registry"))
-    parser.add_argument("-p", "--password", default=None,
-                        help=_("Password for accessing the source registry"))
-    parser.add_argument("--root-password", default=None,
-                        help=_("Set root password"))
-    parser.add_argument("--uidmap", default=None, action='append',
-                        metavar="<start>:<target>:<count>",
-                        help=_("Map UIDs"))
-    parser.add_argument("--gidmap", default=None, action='append',
-                        metavar="<start>:<target>:<count>",
-                        help=_("Map GIDs"))
-    parser.add_argument("--idmap", default=None, action='append',
-                        metavar="<start>:<target>:<count>",
-                        help=_("Map both UIDs/GIDs"))
-    parser.add_argument("--no-cache", action="store_true",
-                        help=_("Do not store downloaded Docker images"))
-    parser.add_argument("-f", "--format", default=utils.DEFAULT_OUTPUT_FORMAT,
-                        choices=['dir', 'qcow2'],
-                        help=_("Format to be used for the root filesystem"))
-    parser.add_argument("-d", "--debug", action="store_const", dest="loglevel",
-                        const=logging.DEBUG, help=_("Show debug messages"))
-    parser.add_argument("-q", "--quiet", action="store_const", dest="loglevel",
-                        const=logging.WARNING,
-                        help=_("Don't print progress messages"))
-    parser.add_argument("--status-only", action="store_const",
-                        const=utils.write_progress,
-                        help=_("Show only progress information"))
-    parser.add_argument('--version', action='version',
-                        version='%(prog)s ' + __version__,
-                        help=_("Print the version"))
+
+    # pylint: disable=protected-access
+    parser._positionals.title = 'ARGUMENTS'
+    parser._optionals.title = 'OPTIONS'
+
+    parser.add_argument(
+        "URI", help=_("URI of container image")
+    )
+    parser.add_argument(
+        "DEST", help=_("Destination folder")
+    )
+    parser.add_argument(
+        '--version',
+        help=_("Print the version"),
+        action='version',
+        version='%(prog)s ' + __version__
+    )
+    parser.add_argument(
+        "-f", "--format",
+        help=_('Output format of the root filesystem. '
+               'Allowed values are "dir" (default) and "qcow2".'),
+        default=utils.DEFAULT_OUTPUT_FORMAT,
+        choices=['dir', 'qcow2'],
+        metavar=''
+    )
+    parser.add_argument(
+        "--root-password",
+        help=_("Set root password"),
+        default=None,
+        metavar=''
+    )
+    parser.add_argument(
+        "--no-cache",
+        help=_("Do not store downloaded Docker images"),
+        action="store_true"
+    )
+    parser.add_argument(
+        "-d", "--debug",
+        help=_("Show debug messages"),
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG
+    )
+    parser.add_argument(
+        "-q", "--quiet",
+        help=_("Don't print progress messages"),
+        action="store_const",
+        dest="loglevel",
+        const=logging.WARNING
+    )
+    parser.add_argument(
+        "--status-only",
+        help=_("Show only progress information"),
+        action="store_const",
+        const=utils.write_progress
+    )
+
+    # Authentication arguments
+    auth_group = parser.add_argument_group(
+        title='AUTHENTICATION',
+        description='Credentials used to authenticte to '
+                    'Docker source registry.'
+    )
+    auth_group.add_argument(
+        "-u", "--username",
+        help=_("Use USERNAME to access source registry"),
+        default=None,
+        metavar='USERNAME'
+    )
+    auth_group.add_argument("-u", help="", default=None, metavar='USERNAME')
+    auth_group.add_argument(
+        "-p", "--password",
+        help=_("Use PASSWORD to access source registry"),
+        default=None,
+        metavar='PASSWORD'
+    )
+    auth_group.add_argument("-p", help="", default=None, metavar='PASSWORD')
+    auth_group.add_argument(
+        "--not-secure",
+        help=_("Ignore HTTPS errors"),
+        action='store_true'
+    )
+
+    # Ownership mapping arguments
+    idmap_group = parser.add_argument_group(
+        title='UID/GID mapping',
+        description='Remapping ownership of all files inside rootfs.\n'
+        'These arguments can be specified multiple times.\n'
+        'Format:\t<start>:<target>:<count>\n'
+        'Example:\t--idmap 500:1500:10 --idmap 0:1000:10'
+    )
+    idmap_group.add_argument(
+        "--uidmap",
+        help=_("Map UIDs"),
+        default=None,
+        action='append',
+        metavar=''
+    )
+    idmap_group.add_argument(
+        "--gidmap",
+        help=_("Map GIDs"),
+        default=None,
+        action='append',
+        metavar=''
+    )
+    idmap_group.add_argument(
+        "--idmap",
+        help=_("Map both UIDs/GIDs"),
+        default=None,
+        action='append',
+        metavar=''
+    )
 
     try:
         args = parser.parse_args()
@@ -238,8 +314,8 @@ def main():
             gid_map += parse_idmap(args.gidmap)
 
         # do the job here!
-        bootstrap(uri=args.uri,
-                  dest=args.dest,
+        bootstrap(uri=args.URI,
+                  dest=args.DEST,
                   fmt=args.format,
                   username=args.username,
                   password=args.password,
