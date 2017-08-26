@@ -120,6 +120,12 @@ def bootstrap(uri, dest,
         logger.error("No write permissions on destination path '%s'", dest)
         sys.exit(1)
 
+    if uid_map is None:
+        uid_map = []
+
+    if gid_map is None:
+        gid_map = []
+
     source(uri=uri,
            fmt=fmt,
            username=username,
