@@ -102,6 +102,7 @@ def safe_untar(src, dest):
     """
     virt_sandbox = ['virt-sandbox',
                     '-c', LIBVIRT_CONN,
+                    '--name=bootstrap_%s' % os.getpid(),
                     '-m', 'host-bind:/mnt=' + dest]  # Bind destination folder
 
     # Compression type is auto detected from tar
