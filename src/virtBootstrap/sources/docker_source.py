@@ -51,6 +51,7 @@ class DockerSource(object):
         @param password: Password to access source registry
         @param uid_map: Mappings for UID of files in rootfs
         @param gid_map: Mappings for GID of files in rootfs
+        @param root_password: Root password to set in rootfs
         @param fmt: Format used to store image [dir, qcow2]
         @param not_secure: Do not require HTTPS and certificate verification
         @param no_cache: Whether to store downloaded images or not
@@ -65,6 +66,7 @@ class DockerSource(object):
         self.password = kwargs.get('password', None)
         self.uid_map = kwargs.get('uid_map', [])
         self.gid_map = kwargs.get('gid_map', [])
+        self.root_password = kwargs.get('root_password', None)
         self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
         self.insecure = kwargs.get('not_secure', False)
         self.no_cache = kwargs.get('no_cache', False)
@@ -287,10 +289,15 @@ class DockerSource(object):
                 )
                 img.create_base_layer()
                 img.create_backing_chains()
+                img.set_root_password(self.root_password)
                 if self.uid_map or self.gid_map:
                     logger.info("Mapping UID/GID")
                     utils.map_id_in_image(
-                        len(self.layers), dest, self.uid_map, self.gid_map
+                        len(self.layers),  # Number of layers
+                        dest,
+                        self.uid_map,
+                        self.gid_map,
+                        (self.root_password is None)  # Create new disk?
                     )
 
             else:

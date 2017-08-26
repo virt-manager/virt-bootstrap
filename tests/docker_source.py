@@ -286,6 +286,24 @@ class TestQcow2DockerSource(Qcow2ImageAccessor):
             g.umount('/')
         g.shutdown()
 
+    def test_qcow2_setting_root_password(self):
+        """
+        Ensures that the root password is set in the last qcow2 image.
+        """
+        self.root_password = "My secret password"
+        layers_rootfs = self.call_bootstrap()
+
+        g = guestfs.GuestFS(python_return_dict=True)
+        g.add_drive_opts(
+            self.get_image_path(len(layers_rootfs)),
+            readonly=True
+        )
+        g.launch()
+        g.mount('/dev/sda', '/')
+        self.validate_shadow_file_in_image(g)
+        g.umount('/')
+        g.shutdown()
+
 
 class TestDockerSource(unittest.TestCase):
     """

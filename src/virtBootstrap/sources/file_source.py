@@ -43,12 +43,14 @@ class FileSource(object):
         @param fmt: Format used to store image [dir, qcow2]
         @param uid_map: Mappings for UID of files in rootfs
         @param gid_map: Mappings for GID of files in rootfs
+        @param root_password: Root password to set in rootfs
         @param progress: Instance of the progress module
         """
         self.path = kwargs['uri'].path
         self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
         self.uid_map = kwargs.get('uid_map', [])
         self.gid_map = kwargs.get('gid_map', [])
+        self.root_password = kwargs.get('root_password', None)
         self.progress = kwargs['progress'].update_progress
 
     def unpack(self, dest):
@@ -77,9 +79,16 @@ class FileSource(object):
                 progress=self.progress
             )
             img.create_base_layer()
+            img.set_root_password(self.root_password)
             if self.uid_map or self.gid_map:
                 logger.info("Mapping UID/GID")
-                utils.map_id_in_image(1, dest, self.uid_map, self.gid_map)
+                utils.map_id_in_image(
+                    1,  # Number of layers
+                    dest,
+                    self.uid_map,
+                    self.gid_map,
+                    (self.root_password is None)  # Create new disk?
+                )
 
         else:
             raise Exception("Unknown format:" + self.output_format)

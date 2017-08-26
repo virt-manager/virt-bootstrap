@@ -31,7 +31,6 @@ import subprocess
 import sys
 import tempfile
 import logging
-import re
 
 import guestfs
 import passlib.hosts
@@ -137,6 +136,46 @@ class BuildImage(object):
         self.g.tar_in(tar_file, '/', get_compression_type(tar_file),
                       xattrs=True, selinux=True, acls=True)
         self.g.umount('/')
+
+    def set_root_password(self, root_password):
+        """
+        Set root password within new layer
+        """
+        if not root_password:
+            return
+
+        self.progress("Setting root password", logger=logger)
+        img_file = os.path.join(self.dest, 'layer-%s.qcow2' % self.nlayers)
+        self.g.disk_create(
+            filename=img_file,
+            format='qcow2',
+            size=-1,
+            backingfile=self.qcow2_files[-1],
+            backingformat='qcow2'
+        )
+        self.g.add_drive(img_file, format='qcow2')
+        self.g.launch()
+        self.g.mount('/dev/sda', '/')
+        success = False
+        if self.g.is_file('/etc/shadow'):
+            shadow_content = self.g.read_file('/etc/shadow').decode('utf-8')
+            shadow_content = shadow_content.split('\n')
+            if shadow_content:
+                # Note: 'shadow_content' is a list, pass-by-reference is used
+                set_password_in_shadow_content(shadow_content, root_password)
+                self.g.write('/etc/shadow', '\n'.join(shadow_content))
+                success = True
+            else:
+                logger.error('shadow file is empty')
+        else:
+            logger.error('shadow file was not found')
+
+        self.g.umount('/')
+        self.g.shutdown()
+
+        if not success:
+            self.progress("Removing root password layer", logger=logger)
+            os.remove(img_file)
 
 
 def get_compression_type(tar_file):
@@ -432,29 +471,6 @@ def set_root_password_in_rootfs(rootfs, password):
         os.chmod(shadow_file, shadow_file_permissions)
 
 
-def set_root_password_in_image(image, password):
-    """
-    Set password on the root user within image
-    """
-    password_hash = passlib.hosts.linux_context.hash(password)
-    execute(['virt-edit',
-             '-a', image, '/etc/shadow',
-             '-e', 's,^root:.*?:,root:%s:,' % re.escape(password_hash)])
-
-
-def set_root_password(fmt, dest, root_password):
-    """
-    Set root password
-    """
-    if fmt == "dir":
-        set_root_password_in_rootfs(dest, root_password)
-    elif fmt == "qcow2":
-        layers = [layer for layer in os.listdir(dest)
-                  if layer.startswith('layer-')]
-        set_root_password_in_image(os.path.join(dest, max(layers)),
-                                   root_password)
-
-
 def write_progress(prog):
     """
     Write progress output to console
@@ -569,7 +585,7 @@ def apply_mapping_in_image(uid, gid, rootfs_tree, g):
             g.lchown(new_uid, new_gid, os.path.join('/', member))
 
 
-def map_id_in_image(nlayers, dest, map_uid, map_gid):
+def map_id_in_image(nlayers, dest, map_uid, map_gid, new_disk=True):
     """
     Create additional layer in which UID/GID mipping is applied.
 
@@ -582,14 +598,15 @@ def map_id_in_image(nlayers, dest, map_uid, map_gid):
     additional_layer = os.path.join(dest, "layer-%d.qcow2" % nlayers)
     # Add the last layer as readonly
     g.add_drive_opts(last_layer, format='qcow2', readonly=True)
-    # Create the additional layer
-    g.disk_create(
-        filename=additional_layer,
-        format='qcow2',
-        size=-1,
-        backingfile=last_layer,
-        backingformat='qcow2'
-    )
+    if new_disk:
+        # Create the additional layer
+        g.disk_create(
+            filename=additional_layer,
+            format='qcow2',
+            size=-1,
+            backingfile=last_layer,
+            backingformat='qcow2'
+        )
     g.add_drive(additional_layer, format='qcow2')
     g.launch()
     g.mount('/dev/sda', '/')

@@ -115,3 +115,12 @@ class TestQcow2FileSource(Qcow2ImageAccessor):
         self.call_bootstrap()
         self.apply_mapping()
         self.check_qcow2_images(self.get_image_path(1))
+
+    def test_qcow2_setting_root_password(self):
+        """
+        Ensures that the root password is set in the last qcow2 image.
+        """
+        self.root_password = "My secret password"
+        self.call_bootstrap()
+        self.check_image = self.validate_shadow_file_in_image
+        self.check_qcow2_images(self.get_image_path(1))
