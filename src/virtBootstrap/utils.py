@@ -501,9 +501,9 @@ def map_id(path, map_uid, map_gid):
             os.lchown(file_path, new_uid, new_gid)
 
 
-def mapping_uid_gid(dest, uid_map, gid_map):
+def balance_uid_gid_maps(uid_map, gid_map):
     """
-    Mapping ownership for each uid_map and gid_map.
+    Make sure the UID/GID list of mappings have the same length.
     """
     len_diff = len(uid_map) - len(gid_map)
 
@@ -512,5 +512,11 @@ def mapping_uid_gid(dest, uid_map, gid_map):
     elif len_diff > 0:
         gid_map += [None] * len_diff
 
+
+def mapping_uid_gid(dest, uid_map, gid_map):
+    """
+    Mapping ownership for each uid_map and gid_map.
+    """
+    balance_uid_gid_maps(uid_map, gid_map)
     for uid, gid in zip(uid_map, gid_map):
         map_id(dest, uid, gid)
