@@ -146,17 +146,16 @@ def size_to_bytes(number, fmt):
             else False)
 
 
-def log_layer_extract(layer, current, total, progress):
+def log_layer_extract(tar_file, tar_size, current, total, progress):
     """
     Create log message on layer extract.
     """
-    sum_type, sum_value, layer_file, layer_size = layer
     msg = 'Extracting layer (%s/%s)' % (current, total)
 
-    if layer_size:
-        msg += " with size: %s" % bytes_to_size(layer_size)
+    if tar_size:
+        msg += " with size: %s" % bytes_to_size(tar_size)
     progress(msg, logger=logger)
-    logger.debug('Untar layer: (%s:%s) %s', sum_type, sum_value, layer_file)
+    logger.debug('Untar layer: %s', tar_file)
 
 
 def untar_layers(layers_list, dest_dir, progress):
@@ -165,11 +164,11 @@ def untar_layers(layers_list, dest_dir, progress):
     """
     nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
-        log_layer_extract(layer, index + 1, nlayers, progress)
-        layer_file = layer[2]
+        tar_file, tar_size = layer
+        log_layer_extract(tar_file, tar_size, index + 1, nlayers, progress)
 
         # Extract layer tarball into destination directory
-        safe_untar(layer_file, dest_dir)
+        safe_untar(tar_file, dest_dir)
 
         # Update progress value
         progress(value=(float(index + 1) / nlayers * 50) + 50)
@@ -246,8 +245,8 @@ def extract_layers_in_qcow2(layers_list, dest_dir, progress):
 
     nlayers = len(layers_list)
     for index, layer in enumerate(layers_list):
-        log_layer_extract(layer, index + 1, nlayers, progress)
-        tar_file = layer[2]
+        tar_file, tar_size = layer
+        log_layer_extract(tar_file, tar_size, index + 1, nlayers, progress)
 
         # Name format for the qcow2 image
         qcow2_layer_file = "{}/layer-{}.qcow2".format(dest_dir, index)

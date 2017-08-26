@@ -333,9 +333,9 @@ class TestDockerSource(unittest.TestCase):
         }
 
         expected_result = [
-            ['sha256', 'a7050fc1', '/images_path/a7050fc1.tar', None],
-            ['sha256', 'c6ff40b6', '/images_path/c6ff40b6.tar', None],
-            ['sha256', '75c416ea', '/images_path/75c416ea.tar', None]
+            ['/images_path/a7050fc1.tar', None],
+            ['/images_path/c6ff40b6.tar', None],
+            ['/images_path/75c416ea.tar', None]
         ]
 
         with mock.patch('os.path.getsize') as m_getsize:
@@ -364,9 +364,9 @@ class TestDockerSource(unittest.TestCase):
         }
 
         expected_result = [
-            ['sha256', '75c416ea', '/images_path/75c416ea.tar', 47103294],
-            ['sha256', 'c6ff40b6', '/images_path/c6ff40b6.tar', 814],
-            ['sha256', 'a7050fc1', '/images_path/a7050fc1.tar', 513]
+            ['/images_path/75c416ea.tar', 47103294],
+            ['/images_path/c6ff40b6.tar', 814],
+            ['/images_path/a7050fc1.tar', 513]
         ]
 
         src_instance = self._mock_retrieve_layers_info(manifest, kwargs)[0]

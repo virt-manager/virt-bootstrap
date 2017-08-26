@@ -65,6 +65,7 @@ class DockerSource(object):
         self.images_dir = utils.get_image_dir(self.no_cache)
         self.manifest = None
         self.layers = []
+        self.checksums = []
 
         if self.username and not self.password:
             self.password = getpass.getpass()
@@ -94,9 +95,13 @@ class DockerSource(object):
             layer_digest = layer[digest_field]
             layer_size = layer['size'] if 'size' in layer else None
 
+            # Store checksums of layers
             sum_type, layer_sum = layer_digest.split(':')
+            self.checksums.append([sum_type, layer_sum])
+
+            # Store file path and size of each layer
             file_path = os.path.join(self.images_dir, layer_sum + '.tar')
-            self.layers.append([sum_type, layer_sum, file_path, layer_size])
+            self.layers.append([file_path, layer_size])
 
     def gen_valid_uri(self, uri):
         """
@@ -230,7 +235,10 @@ class DockerSource(object):
         and have valid hash sum.
         """
         self.progress("Checking cached layers", value=0, logger=logger)
-        for sum_type, sum_expected, path, _ignore in self.layers:
+        for index, checksum in enumerate(self.checksums):
+            path = self.layers[index][0]
+            sum_type, sum_expected = checksum
+
             logger.debug("Checking layer: %s", path)
             if not (os.path.exists(path)
                     and utils.checksum(path, sum_type, sum_expected)):

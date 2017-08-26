@@ -57,10 +57,11 @@ class FileSource(object):
         if not os.path.isfile(self.path):
             raise Exception('Invalid file source "%s"' % self.path)
 
+        layer = [[self.path, os.path.getsize(self.path)]]
         if self.output_format == 'dir':
             self.progress("Extracting files into destination directory",
                           value=0, logger=logger)
-            utils.safe_untar(self.path, dest)
+            utils.untar_layers(layer, dest, self.progress)
 
         elif self.output_format == 'qcow2':
             # Remove the old path
