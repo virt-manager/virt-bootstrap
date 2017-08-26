@@ -24,3 +24,4 @@ sources - Class definitions which process container image or
 
 from virtBootstrap.sources.file_source import FileSource
 from virtBootstrap.sources.docker_source import DockerSource
+from virtBootstrap.sources.virt_builder_source import VirtBuilderSource

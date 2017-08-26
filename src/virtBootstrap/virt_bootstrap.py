@@ -62,7 +62,7 @@ def get_source(source_type):
     Get object which match the source type
     """
     try:
-        class_name = "%sSource" % source_type.capitalize()
+        class_name = "%sSource" % source_type.title().replace('-', '')
         clazz = getattr(sources, class_name)
         return clazz
     except Exception:
