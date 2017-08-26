@@ -52,6 +52,12 @@ else:
     DEFAULT_IMG_DIR = os.environ['HOME']
     DEFAULT_IMG_DIR += "/.local/share/virt-bootstrap/docker_images"
 
+# Set temporary directory
+tmp_dir = os.environ.get('VIRTBOOTSTRAP_TMPDIR', '/tmp')
+if not os.path.exists(tmp_dir):
+    os.makedirs(tmp_dir)
+tempfile.tempdir = tmp_dir
+
 
 class BuildImage(object):
     """
