@@ -1,0 +1,217 @@
+=encoding utf8
+
+=head1 NAME
+
+virt-bootstrap - Setup root file system for libvirt-based containers
+
+=head1 SYNOPSIS
+
+B<virt-bootstrap> URI DEST [OPTIONS]
+
+=head1 DESCRIPTION
+
+B<virt-bootstrap> is a tool providing an easy way to setup the root
+file system for libvirt-based containers. It allows to use either a
+tarball containing the file system, an image on a docker registry
+or virt-builder template and unpacks it either as a folder or in a
+
+=head2 Supported sources are:
+
+=over 4
+
+=item B<file://F</path/to/rootfs.tar>>
+
+Tar archive which contains root file system
+
+=item B<docker://I<registry>:I<port>/I<image>:I<tag>>
+
+Docker registry
+
+=item B<virt-builder://I<template>>
+
+virt-builder templates
+
+=back
+
+Docker container images are downloaded and the layers are getting cached.
+If virt-bootstrap is running with effective UID=0 (root) the layersq
+are cached in C</var/cache/virt-bootstrap/docker_images>.
+For unprivileged users the C<~/.cache/virt-bootstrap/docker_images> directory
+is used. If the environment variable C<XDG_CACHE_HOME> is specified then this
+directory is used instead of C<~/.cache>.
+
+The environment variable C<VIRTBOOTSTRAP_TMPDIR> can be used to specify
+temporary directory used by virt-bootstrap or default C</tmp> will be used.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-f>, B<--format>
+
+Output format of the root file system. Possible values are B<dir>
+(default) and B<qcow2>.
+
+=item B<--root-password> ROOT_PASSWORD
+
+This argument will generate hash from B<ROOT_PASSWORD> and insert the
+hashed value into C</etc/shadow> in the created root file system.
+
+If the output format is C<qcow2> these modifications are applied in
+additional qcow2 disk image.
+
+Note that the C</etc/shadow> file must already exist in the extracted
+root file system of the container image and it must have entry for root
+user.
+
+=item B<--no-cache>
+
+When this flag is used Docker images will be downloaded in temporary
+directory and discarded after the root file system is extracted.
+
+=item B<--status-only>
+
+If this flag is used the log messages will be suppresses and only information
+about the current progress will be displayed.
+
+=item B<-q>, B<--quiet>
+
+Show only warning and error messages.
+
+=item B<-d>, B<--debug>
+
+Show debugging output messages.
+
+=item B<-h>, B<--help>
+
+Display command line help summary.
+
+=item B<--version>
+
+Show virt-bootstrap's version number and exit.
+
+=back
+
+=head2 Authentication options for accessing private Docker registry
+
+Note: If B<--username> argument is specified and B<--password> omitted
+password prompt will be issued. If B<--username> is omitted the B<--password>
+argument will be ignored.
+
+=over 4
+
+=item B<-u>, B<--username> USERNAME
+
+   This argument takes USERNAME to be used to access Docker source registry.
+
+=item B<-p>, B<--password> PASSWORD
+
+This argument takes PASSWORD to be used to access Docker source registry.
+
+=item B<--not-secure>
+
+Don't require HTTPS and verification of certificates when talking to Docker registry.
+
+See L<skopeo(1)/"skopeo copy">
+
+=back
+
+=head2 UID/GID mapping
+
+=over 4
+
+=item B<--uidmap> I<start>:I<target>:I<count>
+
+Shift UIDs of all root file system entries with some offset. This parameter
+can be specified multiple times.
+
+Example: C<--uidmap 0:1000:10 --uidmap 500:1500:10>
+This will map the UIDs: 0-9 to 1000-1009 and 500-509 to 1500-1509
+
+See L<virt-install(1)/"INSTALLATION OPTIONS">
+
+=item B<--gidmap> I<start>:I<target>:I<count>
+
+Shift GIDs of all root file system entries with some offset. This parameter
+can be specified multiple times.
+
+Example: C<--gidmap 0:1000:10 --gidmap 500:1500:10>
+This will map the GIDs: 0-9 to 1000-1009 and 500-509 to 1500-1509
+
+See L<virt-install(1)/"INSTALLATION OPTIONS">
+
+=item B<--idmap> I<start>:I<target>:I<count>
+
+Remapping owner and group of all files and directories inside of the
+root file system. This parameter can be specified multiple times.
+
+Example: C<--idmap 0:1000:10 --idmap 500:1500:10>
+This will map UIDs and GIDs: 0-9 to 1000-1009 and 500-509 to 1500-1509
+
+See L<virt-install(1)/"INSTALLATION OPTIONS">
+
+=back
+
+=head1 USAGE EXAMPLES
+
+=over 4
+
+=item Create root file system using Ubuntu image docker.io registry:
+
+    $ virt-bootstrap docker://ubuntu /tmp/foo
+
+=item Create root file system from image stored on private Docker registry:
+
+    $ virt-bootstrap docker://localhost:5000/ubuntu /tmp/foo \
+      --username testuser \
+      --password testpassoword \
+      --not-secure
+
+=item Apply UIDs/GIDs mapping for root file system entries
+
+    $ virt-bootstrap docker://fedora /tmp/foo \
+      --idmap 0:1000:10
+
+This above command will map UIDs/GIDs: B<0>-B<9> to B<1000>-B<1009>
+
+The same result can be achieved with:
+
+    $ virt-bootstrap docker://fedora /tmp/foo \
+      --uidmap 0:1000:10 \
+      --gidmap 0:1000:10
+
+=item Multiple mapping values can be specified as follows:
+
+    $ virt_bootstrap.py docker://ubuntu /tmp/foo \
+      --idmap 0:1000:10 \
+      --idmap 500:1500:10
+
+This will map the UID/GIDs:
+B<0>-B<9> to B<1000>-B<1009> and B<500>-B<509> to B<1500>-B<1509>
+
+=item Set root password
+
+    $ virt_bootstrap.py docker://opensuse /tmp/foo \
+      --root-password secret
+
+The above command will download the C<opensuse> container image and
+extract the root file system to C</tmp/foo>. Then it will generate hash
+of the string C<secret> and insert it into C</tmp/foo/etc/shadow> file.
+
+    $ virt_bootstrap.py docker://opensuse /tmp/foo \
+      --root-password secret \
+      -f qcow2
+
+Similarly for B<qcow2> format the container image will be downloaded and
+the root file system will be extracted into qcow2 disk images with backing
+chains. Then additional qcow2 image will be created with backing file set to
+the last layer and the modification of C<shadow> file will be applied
+there.
+
+=back
+
+=head1 AUTHOR
+
+Written by Cedric Bosdonnat and  Radostin Stoyanov
+
+=cut

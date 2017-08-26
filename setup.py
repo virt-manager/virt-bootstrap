@@ -11,6 +11,7 @@ import os
 import sys
 import subprocess
 import setuptools
+from setuptools.command.install import install
 
 # pylint: disable=import-error, wrong-import-position
 sys.path.insert(0, 'src')  # noqa: E402
@@ -24,6 +25,27 @@ def read(fname):
     path = os.path.join(os.path.dirname(__file__), fname)
     with codecs.open(path, encoding='utf-8') as fobj:
         return fobj.read()
+
+
+class PostInstallCommand(install):
+    """
+    Post-installation commands.
+    """
+    def run(self):
+        """
+        Post install script
+        """
+        cmd = [
+            'pod2man',
+            '--center=Container bootstrapping tool',
+            '--name=VIRT-BOOTSTRAP',
+            '--release=%s' % virtBootstrap.__version__,
+            'man/virt-bootstrap.pod',
+            'man/virt-bootstrap.1'
+        ]
+        if subprocess.call(cmd) != 0:
+            raise RuntimeError("Building man pages has failed")
+        install.run(self)
 
 
 class CheckPylint(setuptools.Command):
@@ -114,8 +136,13 @@ setuptools.setup(
 
     ],
     cmdclass={
+        'install': PostInstallCommand,
         'pylint': CheckPylint
     },
+
+    data_files=[
+        ("share/man/man1", ['man/virt-bootstrap.1'])
+    ],
 
     tests_require=['mock>=2.0'],
 
