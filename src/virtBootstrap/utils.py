@@ -179,12 +179,13 @@ def get_mime_type(path):
     """
         Get the mime type of a file.
     """
-    return (
-        subprocess.Popen(
-            ["/usr/bin/file", "--mime-type", path],
-            stdout=subprocess.PIPE
-        ).stdout.read().decode('utf-8').split()[1]
+    proc = subprocess.Popen(
+        ["/usr/bin/file", "--mime-type", path],
+        stdout=subprocess.PIPE
     )
+    proc.wait()
+    with proc.stdout as output:
+        return output.read().decode('utf-8').split()[1]
 
 
 def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
