@@ -47,11 +47,14 @@ DEF_BASE_IMAGE_SIZE = 5 * 1024 * 1024 * 1024
 
 if os.geteuid() == 0:
     LIBVIRT_CONN = "lxc:///"
-    DEFAULT_IMG_DIR = "/var/lib/virt-bootstrap/docker_images"
+    DEFAULT_IMG_DIR = "/var/cache/virt-bootstrap/docker_images"
 else:
     LIBVIRT_CONN = "qemu:///session"
-    DEFAULT_IMG_DIR = os.environ['HOME']
-    DEFAULT_IMG_DIR += "/.local/share/virt-bootstrap/docker_images"
+    if 'XDG_CACHE_HOME' in os.environ:
+        DEFAULT_IMG_DIR = os.environ['XDG_CACHE_HOME']
+    else:
+        DEFAULT_IMG_DIR = os.environ['HOME'] + '/.cache'
+    DEFAULT_IMG_DIR += '/virt-bootstrap/docker_images'
 
 # Set temporary directory
 tmp_dir = os.environ.get('VIRTBOOTSTRAP_TMPDIR', '/tmp')
