@@ -335,7 +335,7 @@ def untar_layers(layers_list, dest_dir, progress):
 
 def get_mime_type(path):
     """
-        Get the mime type of a file.
+    Get the mime type of a file.
     """
     proc = subprocess.Popen(
         ["/usr/bin/file", "--mime-type", path],
@@ -389,10 +389,6 @@ def is_new_layer_message(line):
     """
     Return T/F whether a line in skopeo's progress is indicating
     start the process of new image layer.
-
-    Reference:
-    - https://github.com/containers/image/blob/master/copy/copy.go#L464
-    - https://github.com/containers/image/blob/master/copy/copy.go#L459
     """
     return line.startswith('Copying blob') or line.startswith('Skipping fetch')
 
@@ -401,9 +397,6 @@ def is_layer_config_message(line):
     """
     Return T/F indicating whether the message from skopeo copies the manifest
     file.
-
-    Reference:
-    - https://github.com/containers/image/blob/master/copy/copy.go#L414
     """
     return line.startswith('Copying config')
 
