@@ -37,6 +37,9 @@ from virtBootstrap import progress
 from virtBootstrap import utils
 
 
+__version__ = "0.1.0"
+
+
 gettext.bindtextdomain("virt-bootstrap", "/usr/share/locale")
 gettext.textdomain("virt-bootstrap")
 try:
@@ -216,6 +219,9 @@ def main():
     parser.add_argument("--status-only", action="store_const",
                         const=utils.write_progress,
                         help=_("Show only progress information"))
+    parser.add_argument('--version', action='version',
+                        version='%(prog)s ' + __version__,
+                        help=_("Print the version"))
 
     try:
         args = parser.parse_args()

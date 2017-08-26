@@ -22,5 +22,4 @@ virt-bootstrap - Is a tool providing an easy way to setup the root file system
 """
 
 from virtBootstrap.virt_bootstrap import bootstrap
-
-__version__ = "0.1.0"
+from virtBootstrap.virt_bootstrap import __version__

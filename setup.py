@@ -12,6 +12,10 @@ import sys
 import subprocess
 import setuptools
 
+# pylint: disable=import-error, wrong-import-position
+sys.path.insert(0, 'src')  # noqa: E402
+import virtBootstrap
+
 
 def read(fname):
     """
@@ -70,7 +74,7 @@ class CheckPylint(setuptools.Command):
 
 setuptools.setup(
     name='virt-bootstrap',
-    version='0.1.0',
+    version=virtBootstrap.__version__,
     author='Cedric Bosdonnat',
     author_email='cbosdonnat@suse.com',
     description='Container bootstrapping tool',
