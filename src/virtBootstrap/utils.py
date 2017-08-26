@@ -33,6 +33,7 @@ import tempfile
 import logging
 import re
 
+import guestfs
 import passlib.hosts
 
 # pylint: disable=invalid-name
@@ -42,6 +43,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_OUTPUT_FORMAT = 'dir'
 # Default virtual size of qcow2 image
 DEF_QCOW2_SIZE = '5G'
+DEF_BASE_IMAGE_SIZE = 5 * 1024 * 1024 * 1024
+
 if os.geteuid() == 0:
     LIBVIRT_CONN = "lxc:///"
     DEFAULT_IMG_DIR = "/var/lib/virt-bootstrap/docker_images"
@@ -49,6 +52,88 @@ else:
     LIBVIRT_CONN = "qemu:///session"
     DEFAULT_IMG_DIR = os.environ['HOME']
     DEFAULT_IMG_DIR += "/.local/share/virt-bootstrap/docker_images"
+
+
+class BuildImage(object):
+    """
+    Use guestfs-python to create qcow2 disk images.
+    """
+
+    def __init__(self, layers, dest, progress):
+        """
+        @param tar_files: Tarballs to be converted to qcow2 images
+        @param dest: Directory where the qcow2 images will be created
+        @param progress: Instance of the progress module
+        """
+        self.g = guestfs.GuestFS(python_return_dict=True)
+        self.layers = layers
+        self.nlayers = len(layers)
+        self.dest = dest
+        self.progress = progress
+        self.qcow2_files = []
+
+    def create_base_layer(self, fmt='qcow2', size=DEF_BASE_IMAGE_SIZE):
+        """
+        Create and format qcow2 disk image which represnts the base layer.
+        """
+        self.qcow2_files = [os.path.join(self.dest, 'layer-0.qcow2')]
+        self.progress("Creating base layer", logger=logger)
+        self.g.disk_create(self.qcow2_files[0], fmt, size)
+        self.g.add_drive(self.qcow2_files[0], format=fmt)
+        self.g.launch()
+        self.progress("Formating disk image", logger=logger)
+        self.g.mkfs("ext3", '/dev/sda')
+        self.extract_layer(0, '/dev/sda')
+        # Shutdown qemu instance to avoid hot-plugging of devices.
+        self.g.shutdown()
+
+    def create_backing_chains(self):
+        """
+        Convert other layers to qcow2 images linked as backing chains.
+        """
+        for i in range(1, self.nlayers):
+            self.qcow2_files.append(
+                os.path.join(self.dest, 'layer-%d.qcow2' % i)
+            )
+            self.progress(
+                "Creating image (%d/%d)" % (i + 1, self.nlayers),
+                logger=logger
+            )
+            self.g.disk_create(
+                filename=self.qcow2_files[i],
+                format='qcow2',
+                size=-1,
+                backingfile=self.qcow2_files[i - 1],
+                backingformat='qcow2'
+            )
+            self.g.add_drive(self.qcow2_files[i], format='qcow2')
+        self.g.launch()
+        devices = self.g.list_devices()
+        # Tar-in layers (skip the base layer)
+        for index in range(1, self.nlayers):
+            self.extract_layer(index, devices[index - 1])
+        self.g.shutdown()
+
+    def extract_layer(self, index, dev):
+        """
+        Extract tarball of layer to device
+        """
+        tar_file, tar_size = self.layers[index]
+        log_layer_extract(
+            tar_file, tar_size, index + 1, self.nlayers, self.progress
+        )
+        self.tar_in(dev, tar_file)
+
+    def tar_in(self, dev, tar_file):
+        """
+        Common pattern used to tar-in archive into image
+        """
+        self.g.mount(dev, '/')
+        # Restore extended attributes, SELinux contexts and POSIX ACLs
+        # from tar file.
+        self.g.tar_in(tar_file, '/', get_compression_type(tar_file),
+                      xattrs=True, selinux=True, acls=True)
+        self.g.umount('/')
 
 
 def get_compression_type(tar_file):
@@ -210,67 +295,6 @@ def get_mime_type(path):
     proc.wait()
     with proc.stdout as output:
         return output.read().decode('utf-8').split()[1]
-
-
-def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
-    """
-    Create qcow2 image from tarball.
-    """
-    qemu_img_cmd = ["qemu-img", "create", "-f", "qcow2", layer_file, size]
-
-    if not backing_file:
-        logger.info("Creating base qcow2 image")
-        execute(qemu_img_cmd)
-
-        logger.info("Formatting qcow2 image")
-        execute(['virt-format',
-                 '--format=qcow2',
-                 '--partition=none',
-                 '--filesystem=ext3',
-                 '-a', layer_file])
-    else:
-        # Add backing chain
-        qemu_img_cmd.insert(2, "-b")
-        qemu_img_cmd.insert(3, backing_file)
-
-        logger.info("Creating qcow2 image with backing chain")
-        execute(qemu_img_cmd)
-
-    # Extract tarball using "tar-in" command from libguestfs
-    tar_in_cmd = ["guestfish",
-                  "-a", layer_file,
-                  '-m', '/dev/sda',
-                  'tar-in', tar_file, "/"]
-
-    # Check if tarball is compressed
-    compression = get_compression_type(tar_file)
-    if compression is not None:
-        tar_in_cmd.append('compress:' + compression)
-
-    # Execute virt-tar-in command
-    execute(tar_in_cmd)
-
-
-def extract_layers_in_qcow2(layers_list, dest_dir, progress):
-    """
-    Extract docker layers in qcow2 images with backing chains.
-    """
-    qcow2_backing_file = None
-
-    nlayers = len(layers_list)
-    for index, layer in enumerate(layers_list):
-        tar_file, tar_size = layer
-        log_layer_extract(tar_file, tar_size, index + 1, nlayers, progress)
-
-        # Name format for the qcow2 image
-        qcow2_layer_file = "{}/layer-{}.qcow2".format(dest_dir, index)
-        # Create the image layer
-        create_qcow2(tar_file, qcow2_layer_file, qcow2_backing_file)
-        # Keep the file path for the next layer
-        qcow2_backing_file = qcow2_layer_file
-
-        # Update progress value
-        progress(value=(float(index + 1) / nlayers * 50) + 50)
 
 
 def get_image_dir(no_cache=False):

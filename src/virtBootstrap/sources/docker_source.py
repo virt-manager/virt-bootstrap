@@ -272,7 +272,15 @@ class DockerSource(object):
             elif self.output_format == 'qcow2':
                 self.progress("Extracting container layers into qcow2 images",
                               value=50, logger=logger)
-                utils.extract_layers_in_qcow2(self.layers, dest, self.progress)
+
+                img = utils.BuildImage(
+                    layers=self.layers,
+                    dest=dest,
+                    progress=self.progress
+                )
+                img.create_base_layer()
+                img.create_backing_chains()
+
             else:
                 raise Exception("Unknown format:" + self.output_format)
 

@@ -64,14 +64,16 @@ class FileSource(object):
             utils.untar_layers(layer, dest, self.progress)
 
         elif self.output_format == 'qcow2':
-            # Remove the old path
-            file_name = os.path.basename(self.path)
-            qcow2_file = os.path.realpath('{}/{}.qcow2'.format(dest,
-                                                               file_name))
-
             self.progress("Extracting files into qcow2 image", value=0,
                           logger=logger)
-            utils.create_qcow2(self.path, qcow2_file)
+
+            img = utils.BuildImage(
+                layers=layer,
+                dest=dest,
+                progress=self.progress
+            )
+            img.create_base_layer()
+
         else:
             raise Exception("Unknown format:" + self.output_format)
 
