@@ -442,3 +442,75 @@ def write_progress(prog):
     # Write message to console
     sys.stdout.write(msg)
     sys.stdout.flush()
+
+
+# The implementation for remapping ownership of all files inside a
+# container's rootfs is inspired by the tool uidmapshift:
+#
+# Original author: Serge Hallyn <serge.hallyn@ubuntu.com>
+# Original license: GPLv2
+# http://bazaar.launchpad.net/%7Eserge-hallyn/+junk/nsexec/view/head:/uidmapshift.c
+
+def get_map_id(old_id, opts):
+    """
+    Calculate new map_id.
+    """
+    if old_id >= opts['first'] and old_id < opts['last']:
+        return old_id + opts['offset']
+    return -1
+
+
+def get_mapping_opts(mapping):
+    """
+    Get range options from UID/GID mapping
+    """
+    start = mapping[0] if mapping[0] > -1 else 0
+    target = mapping[1] if mapping[1] > -1 else 0
+    count = mapping[2] if mapping[2] > -1 else 1
+
+    opts = {
+        'first': start,
+        'last': start + count,
+        'offset': target - start
+    }
+    return opts
+
+
+def map_id(path, map_uid, map_gid):
+    """
+    Remapping ownership of all files inside a container's rootfs.
+
+    map_gid and map_uid: Contain integers in a list with format:
+        [<start>, <target>, <count>]
+    """
+    if map_uid:
+        uid_opts = get_mapping_opts(map_uid)
+    if map_gid:
+        gid_opts = get_mapping_opts(map_gid)
+
+    for root, _ignore, files in os.walk(os.path.realpath(path)):
+        for name in [root] + files:
+            file_path = os.path.join(root, name)
+
+            stat_info = os.lstat(file_path)
+            old_uid = stat_info.st_uid
+            old_gid = stat_info.st_gid
+
+            new_uid = get_map_id(old_uid, uid_opts) if map_uid else -1
+            new_gid = get_map_id(old_gid, gid_opts) if map_gid else -1
+            os.lchown(file_path, new_uid, new_gid)
+
+
+def mapping_uid_gid(dest, uid_map, gid_map):
+    """
+    Mapping ownership for each uid_map and gid_map.
+    """
+    len_diff = len(uid_map) - len(gid_map)
+
+    if len_diff < 0:
+        uid_map += [None] * abs(len_diff)
+    elif len_diff > 0:
+        gid_map += [None] * len_diff
+
+    for uid, gid in zip(uid_map, gid_map):
+        map_id(dest, uid, gid)
