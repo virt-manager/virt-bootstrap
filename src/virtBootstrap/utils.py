@@ -64,6 +64,9 @@ class BuildImage(object):
         @param tar_files: Tarballs to be converted to qcow2 images
         @param dest: Directory where the qcow2 images will be created
         @param progress: Instance of the progress module
+
+        Note: uid_map and gid_map have the format:
+            [[<start>, <target>, <count>], [<start>, <target>, <count>] ...]
         """
         self.g = guestfs.GuestFS(python_return_dict=True)
         self.layers = layers
@@ -530,6 +533,77 @@ def map_id(path, map_uid, map_gid):
             new_uid = get_map_id(old_uid, uid_opts) if map_uid else -1
             new_gid = get_map_id(old_gid, gid_opts) if map_gid else -1
             os.lchown(file_path, new_uid, new_gid)
+
+
+def guestfs_walk(rootfs_tree, g, path='/'):
+    """
+    File system walk for guestfs
+    """
+    stat = g.lstat(path)
+    rootfs_tree[path] = {'uid': stat['uid'], 'gid': stat['gid']}
+    for member in g.ls(path):
+        m_path = os.path.join(path, member)
+        if g.is_dir(m_path):
+            guestfs_walk(rootfs_tree, g, m_path)
+        else:
+            stat = g.lstat(m_path)
+            rootfs_tree[m_path] = {'uid': stat['uid'], 'gid': stat['gid']}
+
+
+def apply_mapping_in_image(uid, gid, rootfs_tree, g):
+    """
+    Apply mapping of new ownership
+    """
+    if uid:
+        uid_opts = get_mapping_opts(uid)
+    if gid:
+        gid_opts = get_mapping_opts(gid)
+
+    for member in rootfs_tree:
+        old_uid = rootfs_tree[member]['uid']
+        old_gid = rootfs_tree[member]['gid']
+
+        new_uid = get_map_id(old_uid, uid_opts) if uid else -1
+        new_gid = get_map_id(old_gid, gid_opts) if gid else -1
+        if new_uid != -1 or new_gid != -1:
+            g.lchown(new_uid, new_gid, os.path.join('/', member))
+
+
+def map_id_in_image(nlayers, dest, map_uid, map_gid):
+    """
+    Create additional layer in which UID/GID mipping is applied.
+
+    map_gid and map_uid have the format:
+        [[<start>, <target>, <count>], [<start>, <target>, <count>], ...]
+    """
+
+    g = guestfs.GuestFS(python_return_dict=True)
+    last_layer = os.path.join(dest, "layer-%d.qcow2" % (nlayers - 1))
+    additional_layer = os.path.join(dest, "layer-%d.qcow2" % nlayers)
+    # Add the last layer as readonly
+    g.add_drive_opts(last_layer, format='qcow2', readonly=True)
+    # Create the additional layer
+    g.disk_create(
+        filename=additional_layer,
+        format='qcow2',
+        size=-1,
+        backingfile=last_layer,
+        backingformat='qcow2'
+    )
+    g.add_drive(additional_layer, format='qcow2')
+    g.launch()
+    g.mount('/dev/sda', '/')
+    rootfs_tree = dict()
+    guestfs_walk(rootfs_tree, g)
+    g.umount('/')
+    g.mount('/dev/sdb', '/')
+
+    balance_uid_gid_maps(map_uid, map_gid)
+    for uid, gid in zip(map_uid, map_gid):
+        apply_mapping_in_image(uid, gid, rootfs_tree, g)
+
+    g.umount('/')
+    g.shutdown()
 
 
 def balance_uid_gid_maps(uid_map, gid_map):

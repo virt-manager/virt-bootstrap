@@ -263,6 +263,29 @@ class TestQcow2DockerSource(Qcow2ImageAccessor):
             g.umount('/')
         g.shutdown()
 
+    def test_qcow2_ownership_mapping(self):
+        """
+        Ensures that UID/GID mapping works correctly for qcow2 conversion.
+        """
+        self.uid_map = [[1000, 2000, 10], [0, 1000, 10], [500, 500, 10]]
+        self.gid_map = [[1000, 2000, 10], [0, 1000, 10], [500, 500, 10]]
+        layers_rootfs = self.call_bootstrap()
+
+        g = guestfs.GuestFS(python_return_dict=True)
+        g.add_drive_opts(
+            self.get_image_path(len(layers_rootfs)),
+            readonly=True
+        )
+
+        g.launch()
+        for rootfs in layers_rootfs[::-1]:
+            self.rootfs_tree = rootfs
+            self.apply_mapping()
+            g.mount('/dev/sda', '/')
+            self.check_image(g)
+            g.umount('/')
+        g.shutdown()
+
 
 class TestDockerSource(unittest.TestCase):
     """

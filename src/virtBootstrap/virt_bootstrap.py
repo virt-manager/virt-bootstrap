@@ -130,6 +130,8 @@ def bootstrap(uri, dest,
            fmt=fmt,
            username=username,
            password=password,
+           uid_map=uid_map,
+           gid_map=gid_map,
            not_secure=not_secure,
            no_cache=no_cache,
            progress=prog).unpack(dest)
@@ -138,7 +140,7 @@ def bootstrap(uri, dest,
         logger.info("Setting password of the root account")
         utils.set_root_password(fmt, dest, root_password)
 
-    if fmt == "dir" and uid_map or gid_map:
+    if fmt == "dir" and (uid_map or gid_map):
         logger.info("Mapping UID/GID")
         utils.mapping_uid_gid(dest, uid_map, gid_map)
 

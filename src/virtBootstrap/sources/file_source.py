@@ -41,10 +41,14 @@ class FileSource(object):
 
         @param uri: Path to tar archive file.
         @param fmt: Format used to store image [dir, qcow2]
+        @param uid_map: Mappings for UID of files in rootfs
+        @param gid_map: Mappings for GID of files in rootfs
         @param progress: Instance of the progress module
         """
         self.path = kwargs['uri'].path
         self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
+        self.uid_map = kwargs.get('uid_map', [])
+        self.gid_map = kwargs.get('gid_map', [])
         self.progress = kwargs['progress'].update_progress
 
     def unpack(self, dest):
@@ -73,6 +77,9 @@ class FileSource(object):
                 progress=self.progress
             )
             img.create_base_layer()
+            if self.uid_map or self.gid_map:
+                logger.info("Mapping UID/GID")
+                utils.map_id_in_image(1, dest, self.uid_map, self.gid_map)
 
         else:
             raise Exception("Unknown format:" + self.output_format)

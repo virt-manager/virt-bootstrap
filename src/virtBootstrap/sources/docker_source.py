@@ -49,15 +49,22 @@ class DockerSource(object):
         @param uri: Address of source registry
         @param username: Username to access source registry
         @param password: Password to access source registry
+        @param uid_map: Mappings for UID of files in rootfs
+        @param gid_map: Mappings for GID of files in rootfs
         @param fmt: Format used to store image [dir, qcow2]
         @param not_secure: Do not require HTTPS and certificate verification
         @param no_cache: Whether to store downloaded images or not
         @param progress: Instance of the progress module
+
+        Note: uid_map and gid_map have the format:
+            [[<start>, <target>, <count>], [<start>, <target>, <count>] ...]
         """
 
         self.url = self.gen_valid_uri(kwargs['uri'])
         self.username = kwargs.get('username', None)
         self.password = kwargs.get('password', None)
+        self.uid_map = kwargs.get('uid_map', [])
+        self.gid_map = kwargs.get('gid_map', [])
         self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
         self.insecure = kwargs.get('not_secure', False)
         self.no_cache = kwargs.get('no_cache', False)
@@ -280,6 +287,11 @@ class DockerSource(object):
                 )
                 img.create_base_layer()
                 img.create_backing_chains()
+                if self.uid_map or self.gid_map:
+                    logger.info("Mapping UID/GID")
+                    utils.map_id_in_image(
+                        len(self.layers), dest, self.uid_map, self.gid_map
+                    )
 
             else:
                 raise Exception("Unknown format:" + self.output_format)

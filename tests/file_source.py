@@ -105,3 +105,13 @@ class TestQcow2FileSource(Qcow2ImageAccessor):
         """
         self.call_bootstrap()
         self.check_qcow2_images(self.get_image_path())
+
+    def test_qcow2_ownership_mapping(self):
+        """
+        Ensures that UID/GID mapping works correctly for qcow2 conversion.
+        """
+        self.uid_map = [[1000, 2000, 10], [0, 1000, 10], [500, 500, 10]]
+        self.gid_map = [[1000, 2000, 10], [0, 1000, 10], [500, 500, 10]]
+        self.call_bootstrap()
+        self.apply_mapping()
+        self.check_qcow2_images(self.get_image_path(1))
