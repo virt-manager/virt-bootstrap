@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Authors: Cedric Bosdonnat <cbosdonnat@suse.com>
 #
 # Copyright (C) 2017 SUSE, Inc.

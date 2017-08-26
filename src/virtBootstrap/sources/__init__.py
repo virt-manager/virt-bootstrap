@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 sources - Class definitions which process container image or
           tarball to extract the root file system in destination

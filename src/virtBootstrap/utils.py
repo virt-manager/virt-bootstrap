@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Authors:
 #   Cedric Bosdonnat <cbosdonnat@suse.com>
 #   Radostin Stoyanov <rstoyanov1@gmail.com>

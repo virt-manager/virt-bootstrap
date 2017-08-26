@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 virt-bootstrap - Is a tool providing an easy way to setup the root file system
                  for libvirt-based containers.
