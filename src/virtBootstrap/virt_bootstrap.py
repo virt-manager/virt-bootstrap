@@ -192,7 +192,7 @@ def main():
     parser._optionals.title = 'OPTIONS'
 
     parser.add_argument(
-        "URI", help=_("URI of container image")
+        "URI", help=_("Source URI")
     )
     parser.add_argument(
         "DEST", help=_("Destination folder")
