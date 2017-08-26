@@ -109,6 +109,13 @@ def bootstrap(uri, dest,
     """
     Get source object and call unpack method
     """
+    if fmt == 'dir' and os.geteuid() != 0:
+        if uid_map or gid_map:
+            raise ValueError("UID/GID mapping with 'dir' format is "
+                             "allowed only for root.")
+        logger.warning("All extracted files will be owned by the current "
+                       "unprivileged user.")
+
     # Get instance of progress storing module
     prog = progress.Progress(progress_cb)
 
