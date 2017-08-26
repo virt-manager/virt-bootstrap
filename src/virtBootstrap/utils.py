@@ -387,8 +387,7 @@ def set_root_password_in_rootfs(rootfs, password):
 
     shadow_file_permissions = os.stat(shadow_file)[0]
     # Set read-write permissions to shadow file
-    # 438 = 0110110110 = -rw-rw-rw-
-    os.chmod(shadow_file, 438)
+    os.chmod(shadow_file, 0o666)
     try:
         with open(shadow_file) as orig_file:
             shadow_content = orig_file.read().split('\n')
