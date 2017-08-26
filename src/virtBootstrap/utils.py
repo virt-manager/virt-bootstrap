@@ -150,10 +150,11 @@ def log_layer_extract(tar_file, tar_size, current, total, progress):
     """
     Create log message on layer extract.
     """
-    msg = 'Extracting layer (%s/%s)' % (current, total)
-
-    if tar_size:
-        msg += " with size: %s" % bytes_to_size(tar_size)
+    msg = 'Extracting layer (%s/%s) with size: %s' % (
+        current,
+        total,
+        bytes_to_size(tar_size or os.path.getsize(tar_file))
+    )
     progress(msg, logger=logger)
     logger.debug('Untar layer: %s', tar_file)
 
