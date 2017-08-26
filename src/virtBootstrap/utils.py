@@ -106,7 +106,11 @@ def safe_untar(src, dest):
 
     # Compression type is auto detected from tar
     # Exclude files under /dev to avoid "Cannot mknod: Operation not permitted"
-    params = ['--', '/bin/tar', 'xf', src, '-C', '/mnt', '--exclude', 'dev/*']
+    # Note: Here we use --absolute-names flag to get around the error message
+    # "Cannot open: Permission denied" when symlynks are extracted, with the
+    # qemu:/// driver. This flag must not be used outside virt-sandbox.
+    params = ['--', '/bin/tar', 'xf', src, '-C', '/mnt', '--exclude', 'dev/*',
+              '--overwrite', '--absolute-names']
     execute(virt_sandbox + params)
 
 
