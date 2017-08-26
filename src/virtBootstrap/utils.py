@@ -51,6 +51,30 @@ else:
     DEFAULT_IMG_DIR += "/.local/share/virt-bootstrap/docker_images"
 
 
+def get_compression_type(tar_file):
+    """
+    Get compression type of tar file.
+    """
+    # Get mime type of archive
+    mime_tar_file = get_mime_type(tar_file)
+    logger.debug("Detected mime type of archive: %s", mime_tar_file)
+
+    compression_fmts = {
+        'x-gzip': 'gzip',
+        'gzip': 'gzip',
+        'x-xz': 'xz',
+        'x-bzip2': 'bzip2',
+        'x-compress': 'compress',
+        'x-lzop': 'lzop'
+    }
+
+    # Check if tarball is compressed
+    mime_type, mime_subtype = mime_tar_file.split('/')
+    if mime_type == 'application' and mime_subtype in compression_fmts:
+        return compression_fmts[mime_subtype]
+    return None
+
+
 def checksum(path, sum_type, sum_expected):
     """
     Validate file using checksum.
@@ -212,27 +236,16 @@ def create_qcow2(tar_file, layer_file, backing_file=None, size=DEF_QCOW2_SIZE):
         logger.info("Creating qcow2 image with backing chain")
         execute(qemu_img_cmd)
 
-    # Get mime type of archive
-    mime_tar_file = get_mime_type(tar_file)
-    logger.debug("Detected mime type of archive: %s", mime_tar_file)
-
     # Extract tarball using "tar-in" command from libguestfs
     tar_in_cmd = ["guestfish",
                   "-a", layer_file,
                   '-m', '/dev/sda',
                   'tar-in', tar_file, "/"]
 
-    compression_fmts = {'x-gzip': 'gzip', 'gzip': 'gzip',
-                        'x-xz': 'xz',
-                        'x-bzip2': 'bzip2',
-                        'x-compress': 'compress',
-                        'x-lzop': 'lzop'}
-
     # Check if tarball is compressed
-    mime_parts = mime_tar_file.split('/')
-    if mime_parts[0] == 'application' and \
-       mime_parts[1] in compression_fmts:
-        tar_in_cmd.append('compress:' + compression_fmts[mime_parts[1]])
+    compression = get_compression_type(tar_file)
+    if compression is not None:
+        tar_in_cmd.append('compress:' + compression)
 
     # Execute virt-tar-in command
     execute(tar_in_cmd)
