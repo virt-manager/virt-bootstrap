@@ -119,12 +119,11 @@ class BuildImage(object):
                 backingformat='qcow2'
             )
             self.g.add_drive(self.qcow2_files[i], format='qcow2')
-        self.g.launch()
-        devices = self.g.list_devices()
-        # Tar-in layers (skip the base layer)
-        for index in range(1, self.nlayers):
-            self.extract_layer(index, devices[index - 1])
-        self.g.shutdown()
+            self.g.launch()
+
+            devices = self.g.list_devices()
+            self.extract_layer(i, devices[0])
+            self.g.shutdown()
 
     def extract_layer(self, index, dev):
         """
