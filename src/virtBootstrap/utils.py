@@ -167,7 +167,9 @@ class BuildImage(object):
         self.g.mount('/dev/sda', '/')
         success = False
         if self.g.is_file('/etc/shadow'):
-            shadow_content = self.g.read_file('/etc/shadow').decode('utf-8')
+            shadow_content = self.g.read_file('/etc/shadow')
+            if hasattr(shadow_content, 'decode'):
+                shadow_content = shadow_content.decode('utf-8')
             shadow_content = shadow_content.split('\n')
             if shadow_content:
                 # Note: 'shadow_content' is a list, pass-by-reference is used
