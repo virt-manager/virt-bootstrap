@@ -12,6 +12,8 @@ Dependencies
  * skopeo
  * virt-sandbox
  * libguestfs python binding
+ * python passlib module
+ * python mock module (for tests only)
 
 Hacking
 -------
