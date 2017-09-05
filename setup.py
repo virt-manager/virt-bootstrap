@@ -1,5 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8; -*-
+# Authors: Cedric Bosdonnat <cbosdonnat@suse.com>
+# Authors: Radostin Stoyanov <rstoyanov1@gmail.com>
+#
+# Copyright (C) 2017 SUSE, Inc.
+# Copyright (C) 2017 Radostin Stoyanov
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 Setup script used for building, testing, and installing modules
@@ -8,10 +26,13 @@ based on setuptools.
 
 import codecs
 import os
+import re
 import sys
 import subprocess
+import time
 import setuptools
 from setuptools.command.install import install
+from setuptools.command.sdist import sdist
 
 # pylint: disable=import-error, wrong-import-position
 sys.path.insert(0, 'src')  # noqa: E402
@@ -94,16 +115,86 @@ class CheckPylint(setuptools.Command):
         sys.exit(res)
 
 
+# SdistCommand is reused from the libvirt python binding (GPLv2+)
+class SdistCommand(sdist):
+    """
+    Custom sdist command, generating a few files.
+    """
+    user_options = sdist.user_options
+
+    description = "Update AUTHORS and ChangeLog; build sdist-tarball."
+
+    def gen_authors(self):
+        """
+        Generate AUTHOS file out of git log
+        """
+        fdlog = os.popen("git log --pretty=format:'%aN <%aE>'")
+        authors = []
+        for line in fdlog:
+            line = "   " + line.strip()
+            if line not in authors:
+                authors.append(line)
+
+        authors.sort(key=str.lower)
+
+        with open('AUTHORS.in', 'r') as fd1, open('AUTHORS', 'w') as fd2:
+            for line in fd1:
+                fd2.write(line.replace('@AUTHORS@', "\n".join(authors)))
+
+    def gen_changelog(self):
+        """
+        Generate ChangeLog file out of git log
+        """
+        cmd = "git log '--pretty=format:%H:%ct %an  <%ae>%n%n%s%n%b%n'"
+        fd1 = os.popen(cmd)
+        fd2 = open("ChangeLog", 'w')
+
+        for line in fd1:
+            match = re.match(r'([a-f0-9]+):(\d+)\s(.*)', line)
+            if match:
+                timestamp = time.gmtime(int(match.group(2)))
+                fd2.write("%04d-%02d-%02d %s\n" % (timestamp.tm_year,
+                                                   timestamp.tm_mon,
+                                                   timestamp.tm_mday,
+                                                   match.group(3)))
+            else:
+                if re.match(r'Signed-off-by', line):
+                    continue
+                fd2.write("    " + line.strip() + "\n")
+
+        fd1.close()
+        fd2.close()
+
+    def run(self):
+        if not os.path.exists("build"):
+            os.mkdir("build")
+
+        if os.path.exists(".git"):
+            try:
+                self.gen_authors()
+                self.gen_changelog()
+
+                sdist.run(self)
+
+            finally:
+                files = ["AUTHORS",
+                         "ChangeLog"]
+                for item in files:
+                    if os.path.exists(item):
+                        os.unlink(item)
+        else:
+            sdist.run(self)
+
+
 setuptools.setup(
     name='virt-bootstrap',
     version=virtBootstrap.__version__,
     author='Cedric Bosdonnat',
     author_email='cbosdonnat@suse.com',
     description='Container bootstrapping tool',
-    license="GPLv3",
+    license="GPLv3+",
     long_description=read('README.md'),
     url='https://github.com/virt-manager/virt-bootstrap',
-    # What does your project relate to?
     keywords='virtualization container rootfs',
     package_dir={"": "src"},
     packages=setuptools.find_packages('src'),
@@ -114,30 +205,18 @@ setuptools.setup(
         ]
     },
     classifiers=[
-        # How mature is this project? Common values are
-        #   3 - Alpha
-        #   4 - Beta
-        #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
-
-        # Indicate who your project is intended for
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: System Administrators',
         'Intended Audience :: Developers',
-
-        # Pick your license as you wish (should match "license" above)
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-
-        # Specify the Python versions you support here. In particular, ensure
-        # that you indicate whether you support Python 2, Python 3 or both.
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6'
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',  # noqa: 501
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3',
 
     ],
     cmdclass={
         'install': PostInstallCommand,
-        'pylint': CheckPylint
+        'pylint': CheckPylint,
+        'sdist': SdistCommand
     },
 
     data_files=[
