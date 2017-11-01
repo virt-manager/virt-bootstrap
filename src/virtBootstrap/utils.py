@@ -33,8 +33,13 @@ import sys
 import tempfile
 import logging
 
-import guestfs
 import passlib.hosts
+
+try:
+    import guestfs
+except ImportError:
+    raise RuntimeError('Python bindings for libguestfs are not installed')
+
 
 # pylint: disable=invalid-name
 # Create logger
