@@ -646,3 +646,16 @@ def mapping_uid_gid(dest, uid_map, gid_map):
     balance_uid_gid_maps(uid_map, gid_map)
     for uid, gid in zip(uid_map, gid_map):
         map_id(dest, uid, gid)
+
+
+def is_installed(program):
+    """
+    Try to find executable listed in the PATH env variable.
+
+    Returns the complete filename or None if not found.
+    """
+    for path in os.environ["PATH"].split(os.pathsep):
+        exec_file = os.path.join(path, program)
+        if os.path.isfile(exec_file) and os.access(exec_file, os.X_OK):
+            return exec_file
+    return None
