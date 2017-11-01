@@ -62,6 +62,10 @@ class DockerSource(object):
             [[<start>, <target>, <count>], [<start>, <target>, <count>] ...]
         """
 
+        # Check if skopeo is installed
+        if not utils.is_installed('skopeo'):
+            raise RuntimeError('skopeo is not installed')
+
         self.url = self.gen_valid_uri(kwargs['uri'])
         self.username = kwargs.get('username', None)
         self.password = kwargs.get('password', None)
