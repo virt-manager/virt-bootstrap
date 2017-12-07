@@ -32,6 +32,7 @@ import subprocess
 import sys
 import tempfile
 import logging
+import shutil
 
 import passlib.hosts
 
@@ -353,6 +354,19 @@ def get_mime_type(path):
     proc.wait()
     with proc.stdout as output:
         return output.read().decode('utf-8').split()[1]
+
+
+def copytree(src, dst, symlinks=False, ignore=None):
+    """
+    Copy an entire directory of files into an existing directory.
+    """
+    for item in os.listdir(src):
+        src_item = os.path.join(src, item)
+        dst_item = os.path.join(dst, item)
+        if os.path.isdir(src_item):
+            shutil.copytree(src_item, dst_item, symlinks, ignore)
+        else:
+            shutil.copy2(src_item, dst_item)
 
 
 def get_image_dir(no_cache=False):

@@ -137,10 +137,16 @@ class DockerSource(object):
         """
         Download image layers using "skopeo copy".
         """
+
+        if self.no_cache:
+            dest_dir = self.images_dir
+        else:
+            dest_dir = utils.get_image_dir(no_cache=True)
+
         # Note: we don't want to expose --src-cert-dir to users as
         #       they should place the certificates in the system
         #       folders for broader enablement
-        skopeo_copy = ["skopeo", "copy", self.url, "dir:" + self.images_dir]
+        skopeo_copy = ["skopeo", "copy", self.url, "dir:" + dest_dir]
 
         if self.insecure:
             skopeo_copy.append('--src-tls-verify=false')
@@ -150,8 +156,12 @@ class DockerSource(object):
         self.progress("Downloading container image", value=0, logger=logger)
         # Run "skopeo copy" command
         self.read_skopeo_progress(skopeo_copy)
-        # Remove the manifest file as it is not needed
-        os.remove(os.path.join(self.images_dir, "manifest.json"))
+
+        if not self.no_cache:
+            os.remove(os.path.join(dest_dir, "manifest.json"))
+            os.remove(os.path.join(dest_dir, "version"))
+            utils.copytree(dest_dir, self.images_dir)
+            shutil.rmtree(dest_dir)
 
     def parse_output(self, proc):
         """
