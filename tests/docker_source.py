@@ -90,11 +90,8 @@ class CreateLayers(object):
         """
         return {
             "schemaVersion": 2,
-            "layers": [
-                {
-                    "digest":
-                    "sha256:" + os.path.basename(layer).split('.')[0]
-                }
+            "Layers": [
+                "sha256:" + os.path.basename(layer).split('.')[0]
                 for layer in self.layers
             ]
         }
@@ -340,7 +337,7 @@ class TestDockerSource(unittest.TestCase):
             'progress': mock.Mock()
         }
 
-        manifest = {'schemaVersion': 2, 'layers': []}
+        manifest = {'schemaVersion': 2, 'Layers': ['sha256:a7050fc1']}
         (src_instance,
          m_uri, m_utils) = self._mock_retrieve_layers_info(manifest,
                                                            src_kwargs)
@@ -349,7 +346,7 @@ class TestDockerSource(unittest.TestCase):
             'insecure': src_instance.insecure,
             'username': src_instance.username,
             'password': src_instance.password,
-            'raw': True
+            'raw': False
         }
         m_utils['get_image_details'].assert_called_once_with(m_uri(), **kwargs)
 
@@ -365,11 +362,11 @@ class TestDockerSource(unittest.TestCase):
         }
 
         manifest = {
-            'schemaVersion': 1,
-            'fsLayers': [
-                {'blobSum': 'sha256:75c416ea'},
-                {'blobSum': 'sha256:c6ff40b6'},
-                {'blobSum': 'sha256:a7050fc1'}
+            'schemaVersion': 2,
+            'Layers': [
+                'sha256:a7050fc1',
+                'sha256:c6ff40b6',
+                'sha256:75c416ea'
             ]
         }
 
@@ -383,46 +380,3 @@ class TestDockerSource(unittest.TestCase):
             m_getsize.return_value = None
             src_instance = self._mock_retrieve_layers_info(manifest, kwargs)[0]
         self.assertEqual(src_instance.layers, expected_result)
-
-    def test_retrieve_layers_info_schema_version_2(self):
-        """
-        Ensures that retrieve_layers_info() extracts the layers' information
-        from manifest with schema version 2 a list with format:
-            ["digest", "sum_type", "file_path", "size"].
-        """
-        kwargs = {
-            'uri': '',
-            'progress': mock.Mock()
-        }
-
-        manifest = {
-            'schemaVersion': 2,
-            "layers": [
-                {"size": 47103294, "digest": "sha256:75c416ea"},
-                {"size": 814, "digest": "sha256:c6ff40b6"},
-                {"size": 513, "digest": "sha256:a7050fc1"}
-            ]
-        }
-
-        expected_result = [
-            ['/images_path/75c416ea.tar', 47103294],
-            ['/images_path/c6ff40b6.tar', 814],
-            ['/images_path/a7050fc1.tar', 513]
-        ]
-
-        src_instance = self._mock_retrieve_layers_info(manifest, kwargs)[0]
-        self.assertEqual(src_instance.layers, expected_result)
-
-    def test_retrieve_layers_info_raise_error_on_invalid_schema_version(self):
-        """
-        Ensures that retrieve_layers_info() calls get_image_details()
-        with all passed arguments.
-        """
-        kwargs = {
-            'uri': '',
-            'progress': mock.Mock()
-        }
-
-        manifest = {'schemaVersion': 3}
-        with self.assertRaises(ValueError):
-            self._mock_retrieve_layers_info(manifest, kwargs)

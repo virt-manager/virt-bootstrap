@@ -77,7 +77,7 @@ class DockerSource(object):
         self.no_cache = kwargs.get('no_cache', False)
         self.progress = kwargs['progress'].update_progress
         self.images_dir = utils.get_image_dir(self.no_cache)
-        self.manifest = None
+        self.image_details = None
         self.layers = []
         self.checksums = []
 
@@ -91,30 +91,25 @@ class DockerSource(object):
         Retrive manifest from registry and get layers' digest,
         sum_type, size and file_path in a list.
         """
-        self.manifest = utils.get_image_details(self.url, raw=True,
+        image_details = utils.get_image_details(self.url, raw=False,
                                                 insecure=self.insecure,
                                                 username=self.username,
                                                 password=self.password)
 
-        if self.manifest['schemaVersion'] == 1:
-            layers_list = self.manifest['fsLayers'][::-1]
-            digest_field = 'blobSum'
-        elif self.manifest['schemaVersion'] == 2:
-            layers_list = self.manifest['layers']
-            digest_field = 'digest'
-        else:
-            raise ValueError('Unsupported manifest schema.')
+        if not 'Layers' in image_details or not image_details['Layers']:
+            raise ValueError('No image layers.')
 
-        for layer in layers_list:
-            # Store checksums of layers
-            layer_digest = layer[digest_field]
+        # Layers are in order:
+        # - root layer first, and then successive layered layers
+        # Ref: https://github.com/containers/image/blob/master/image/oci.go
+        for layer_digest in image_details['Layers']:
             sum_type, layer_sum = layer_digest.split(':')
-            self.checksums.append([sum_type, layer_sum])
+            self.checksums.append([sum_type, layer_sum]) # Store checksums
 
-            # Store file path and size of each layer
+            # Layers are tar files with hashsum used as name
             file_path = os.path.join(self.images_dir, layer_sum + '.tar')
-            layer_size = layer.get('size', None)
-            self.layers.append([file_path, layer_size])
+            # Store 'file path' and set placeholder for 'size'
+            self.layers.append([file_path, None])
 
     def gen_valid_uri(self, uri):
         """
