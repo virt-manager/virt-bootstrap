@@ -96,7 +96,7 @@ class DockerSource(object):
                                                 username=self.username,
                                                 password=self.password)
 
-        if not 'Layers' in image_details or not image_details['Layers']:
+        if 'Layers' not in image_details or not image_details['Layers']:
             raise ValueError('No image layers.')
 
         # Layers are in order:
