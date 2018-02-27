@@ -96,7 +96,7 @@ class CheckPylint(setuptools.Command):
         """
 
         res = 0
-        files = ' '.join(["setup.py", "src/virtBootstrap/*.py", "tests/*.py"])
+        files = ' '.join(["setup.py", "src/virtBootstrap/", "tests/"])
         output_format = "colorized" if sys.stdout.isatty() else "text"
 
         print(">>> Running pycodestyle ...")
