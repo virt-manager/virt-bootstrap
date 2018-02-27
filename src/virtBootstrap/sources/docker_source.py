@@ -104,7 +104,7 @@ class DockerSource(object):
         # Ref: https://github.com/containers/image/blob/master/image/oci.go
         for layer_digest in image_details['Layers']:
             sum_type, layer_sum = layer_digest.split(':')
-            self.checksums.append([sum_type, layer_sum]) # Store checksums
+            self.checksums.append([sum_type, layer_sum])  # Store checksums
 
             # Layers are tar files with hashsum used as name
             file_path = os.path.join(self.images_dir, layer_sum + '.tar')
