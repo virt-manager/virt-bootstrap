@@ -319,7 +319,7 @@ class DockerSource(object):
         else:
             self.progress("Download and extract completed!", value=100,
                           logger=logger)
-            logger.info("Files are stored in: " + dest)
+            logger.info("Files are stored in: %s", dest)
 
         finally:
             # Clean up

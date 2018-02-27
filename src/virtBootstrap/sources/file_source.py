@@ -96,4 +96,4 @@ class FileSource(object):
 
         self.progress("Extraction completed successfully!", value=100,
                       logger=logger)
-        logger.info("Files are stored in: " + dest)
+        logger.info("Files are stored in: %s", dest)
