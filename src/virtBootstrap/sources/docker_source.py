@@ -304,8 +304,7 @@ class DockerSource(object):
                     logger.info("Mapping UID/GID")
                     utils.map_id_in_image(
                         len(self.layers),  # Number of layers
-                        dest,
-                        self.uid_map,
+                        dest, self.uid_map,
                         self.gid_map,
                         (self.root_password is None)  # Create new disk?
                     )

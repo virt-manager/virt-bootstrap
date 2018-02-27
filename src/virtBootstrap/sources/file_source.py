@@ -49,9 +49,9 @@ class FileSource(object):
         """
         self.path = kwargs['uri'].path
         self.output_format = kwargs.get('fmt', utils.DEFAULT_OUTPUT_FORMAT)
+        self.root_password = kwargs.get('root_password', None)
         self.uid_map = kwargs.get('uid_map', [])
         self.gid_map = kwargs.get('gid_map', [])
-        self.root_password = kwargs.get('root_password', None)
         self.progress = kwargs['progress'].update_progress
 
     def unpack(self, dest):
@@ -85,9 +85,7 @@ class FileSource(object):
                 logger.info("Mapping UID/GID")
                 utils.map_id_in_image(
                     1,  # Number of layers
-                    dest,
-                    self.uid_map,
-                    self.gid_map,
+                    dest, self.uid_map, self.gid_map,
                     (self.root_password is None)  # Create new disk?
                 )
 
