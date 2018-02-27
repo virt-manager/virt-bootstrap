@@ -38,6 +38,8 @@ from setuptools.command.sdist import sdist
 sys.path.insert(0, 'src')  # noqa: E402
 import virtBootstrap
 
+IS_PI3 = (sys.version_info.major == 3)
+
 
 def read(fname):
     """
@@ -100,7 +102,12 @@ class CheckPylint(setuptools.Command):
         output_format = "colorized" if sys.stdout.isatty() else "text"
 
         print(">>> Running pycodestyle ...")
-        cmd = "pycodestyle "
+
+        if IS_PI3 and virtBootstrap.utils.is_installed('pycodestyle-3'):
+            cmd = "pycodestyle-3 "
+        else:
+            cmd = "pycodestyle "
+
         if (subprocess.call(cmd + files, shell=True) != 0):
             res = 1
 
@@ -108,7 +115,13 @@ class CheckPylint(setuptools.Command):
         args = ""
         if self.errors_only:
             args = "-E"
-        cmd = "pylint %s --output-format=%s " % (args, format(output_format))
+
+        if IS_PI3 and virtBootstrap.utils.is_installed('pylint-3'):
+            cmd = "pylint-3 "
+        else:
+            cmd = "pylint "
+
+        cmd += "%s --output-format=%s " % (args, format(output_format))
         if (subprocess.call(cmd + files, shell=True) != 0):
             res = 1
 
