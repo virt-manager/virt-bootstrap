@@ -38,8 +38,6 @@ from setuptools.command.sdist import sdist
 sys.path.insert(0, 'src')  # noqa: E402
 import virtBootstrap
 
-IS_PI3 = (sys.version_info.major == 3)
-
 
 def read(fname):
     """
@@ -96,36 +94,30 @@ class CheckPylint(setuptools.Command):
         """
         Call pycodestyle and pylint here.
         """
+        import pylint.lint
+        import pycodestyle
 
-        res = 0
-        files = ' '.join(["setup.py", "src/virtBootstrap/", "tests/"])
+        files = ["setup.py", "src/virtBootstrap/", "tests/"]
         output_format = "colorized" if sys.stdout.isatty() else "text"
 
         print(">>> Running pycodestyle ...")
 
-        if IS_PI3 and virtBootstrap.utils.is_installed('pycodestyle-3'):
-            cmd = "pycodestyle-3 "
-        else:
-            cmd = "pycodestyle "
-
-        if (subprocess.call(cmd + files, shell=True) != 0):
-            res = 1
+        style_guide = pycodestyle.StyleGuide(paths=files)
+        report = style_guide.check_files()
+        if style_guide.options.count:
+            sys.stderr.write(str(report.total_errors) + '\n')
 
         print(">>> Running pylint ...")
-        args = ""
+
+        pylint_opts = [
+            "--rcfile", "pylintrc",
+            "--output-format=%s" % output_format
+        ]
+
         if self.errors_only:
-            args = "-E"
+            pylint_opts.append("-E")
 
-        if IS_PI3 and virtBootstrap.utils.is_installed('pylint-3'):
-            cmd = "pylint-3 "
-        else:
-            cmd = "pylint "
-
-        cmd += "%s --output-format=%s " % (args, format(output_format))
-        if (subprocess.call(cmd + files, shell=True) != 0):
-            res = 1
-
-        sys.exit(res)
+        pylint.lint.Run(files + pylint_opts)
 
 
 # SdistCommand is reused from the libvirt python binding (GPLv2+)
