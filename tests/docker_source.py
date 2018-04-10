@@ -101,11 +101,6 @@ class TestDirDockerSource(ImageAccessor):
     """
     Ensures that all layers extracted correctly in destination folder.
     """
-    def check_result(self, layers_rootfs, dest):
-        """
-        Iterates trough values of layers_rootfs in reverse order (from the last
-        layer to first) and calls check_extracted_files().
-        """
 
     def call_bootstrap(self, manifest):
         """
