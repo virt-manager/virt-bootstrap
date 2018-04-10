@@ -317,10 +317,12 @@ class TestDockerSource(unittest.TestCase):
         """
         with mock.patch.multiple('virtBootstrap.utils',
                                  get_image_details=mock.DEFAULT,
+                                 is_installed=mock.DEFAULT,
                                  get_image_dir=mock.DEFAULT) as m_utils:
 
             m_utils['get_image_details'].return_value = manifest
             m_utils['get_image_dir'].return_value = '/images_path'
+            m_utils['is_installed'].return_value = True
 
             patch_method = 'virtBootstrap.sources.DockerSource.gen_valid_uri'
             with mock.patch(patch_method) as m_uri:
