@@ -23,8 +23,8 @@ To avoid fetching network resources we mock out the functions:
 - utils.get_image_details(): Returns manifest content
 - utils.get_image_dir(): Returns the directory which contains the tar files
 
-Brief description of this tests:
-1. Create dummy tar files named <checksum>.tar used as image layers.
+Description:
+1. Create dummy image layers (tar files).
 2. Generate manifest content.
 3. Mock out get_image_details() and get_image_dir().
 4. Call bootstrap().
