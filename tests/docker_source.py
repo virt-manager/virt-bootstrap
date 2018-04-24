@@ -335,12 +335,9 @@ class TestDockerSource(unittest.TestCase):
         }
 
         manifest = {'schemaVersion': 2, 'Layers': ['sha256:a7050fc1']}
-
-        with mock.patch('os.path.isfile') as m_isfile:
-            m_isfile.return_value = True
-            result = self._mock_retrieve_layers_info(manifest, src_kwargs)
-
-        src_instance, m_uri, m_utils = result
+        (src_instance,
+         m_uri, m_utils) = self._mock_retrieve_layers_info(manifest,
+                                                           src_kwargs)
 
         kwargs = {
             'insecure': src_instance.insecure,
@@ -376,9 +373,7 @@ class TestDockerSource(unittest.TestCase):
             ['/images_path/75c416ea.tar', None]
         ]
 
-        with mock.patch('os.path.getsize') as m_getsize, \
-                mock.patch('os.path.isfile') as m_isfile:
+        with mock.patch('os.path.getsize') as m_getsize:
             m_getsize.return_value = None
-            m_isfile.side_effect = lambda x: x.endswith(".tar")
             src_instance = self._mock_retrieve_layers_info(manifest, kwargs)[0]
         self.assertEqual(src_instance.layers, expected_result)

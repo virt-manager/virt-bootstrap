@@ -107,11 +107,7 @@ class DockerSource(object):
             self.checksums.append([sum_type, layer_sum])  # Store checksums
 
             # Layers are tar files with hashsum used as name
-            file_path = os.path.join(self.images_dir, layer_sum)
-            if not os.path.isfile(file_path):
-                file_path += '.tar'
-                if not os.path.isfile(file_path):
-                    raise ValueError('Blob %s does not exist.' % file_path)
+            file_path = os.path.join(self.images_dir, layer_sum + '.tar')
             # Store 'file path' and set placeholder for 'size'
             self.layers.append([file_path, None])
 
