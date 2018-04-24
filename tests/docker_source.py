@@ -133,7 +133,7 @@ class TestDirDockerSource(ImageAccessor):
         layers_rootfs = layers.get_layers_rootfs()
         for rootfs_tree in layers_rootfs[::-1]:
             self.rootfs_tree = rootfs_tree
-            self.check_rootfs(skip_ownership=(os.geteuid != 0))
+            self.check_rootfs(skip_ownership=(os.geteuid() != 0))
 
     @unittest.skipIf(NOT_ROOT, "Root privileges required")
     def test_dir_ownership_mapping(self):
