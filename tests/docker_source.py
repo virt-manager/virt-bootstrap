@@ -368,9 +368,9 @@ class TestDockerSource(unittest.TestCase):
         }
 
         expected_result = [
-            ['/images_path/a7050fc1.tar', None],
-            ['/images_path/c6ff40b6.tar', None],
-            ['/images_path/75c416ea.tar', None]
+            ['/images_path/a7050fc1', None],
+            ['/images_path/c6ff40b6', None],
+            ['/images_path/75c416ea', None]
         ]
 
         with mock.patch('os.path.getsize') as m_getsize:

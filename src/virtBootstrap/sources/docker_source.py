@@ -107,7 +107,7 @@ class DockerSource(object):
             self.checksums.append([sum_type, layer_sum])  # Store checksums
 
             # Layers are tar files with hashsum used as name
-            file_path = os.path.join(self.images_dir, layer_sum + '.tar')
+            file_path = os.path.join(self.images_dir, layer_sum)
             # Store 'file path' and set placeholder for 'size'
             self.layers.append([file_path, None])
 
@@ -157,6 +157,17 @@ class DockerSource(object):
             os.remove(os.path.join(dest_dir, "version"))
             utils.copytree(dest_dir, self.images_dir)
             shutil.rmtree(dest_dir)
+
+        # Old versions of skopeo use '.tar' extension to blobs.
+        # Make sure we use the correct file name.
+        for i in range(len(self.layers)):
+            path = self.layers[i][0]
+            if not os.path.exists(path):
+                if os.path.exists(path + '.tar'):
+                    self.layers[i][0] += '.tar'
+                else:
+                    raise ValueError('Blob %s does not exist.' % path)
+
 
     def parse_output(self, proc):
         """
@@ -258,8 +269,14 @@ class DockerSource(object):
             sum_type, sum_expected = checksum
 
             logger.debug("Checking layer: %s", path)
-            if not (os.path.exists(path)
+            if (os.path.exists(path)
                     and utils.checksum(path, sum_type, sum_expected)):
+                continue
+            if (not path.endswith('.tar')
+                    and os.path.exists(path + '.tar')
+                    and utils.checksum(path + '.tar', sum_type, sum_expected)):
+                self.layers[index][0] += '.tar'
+            else:
                 return False
         return True
 
