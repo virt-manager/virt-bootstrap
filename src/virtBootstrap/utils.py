@@ -278,12 +278,12 @@ def safe_untar(src, dest):
     # Note: Here we use --absolute-names flag to get around the error message
     # "Cannot open: Permission denied" when symlynks are extracted, with the
     # qemu:/// driver. This flag must not be used outside virt-sandbox.
-    #
+    params = ['--', '/bin/tar', 'xf', src, '-C', '/mnt', '--exclude', 'dev/*',
+              '--overwrite', '--absolute-names']
     # Preserve file attributes following the specification in
     # https://github.com/opencontainers/image-spec/blob/master/layer.md
-    params = ['--', '/bin/tar', 'xf', src, '-C', '/mnt', '--exclude', 'dev/*',
-              '--overwrite', '--absolute-names',
-              '--acls', '--xattrs', '--selinux']
+    if os.geteuid() == 0:
+        params.extend(['--acls', '--xattrs', '--selinux'])
     execute(virt_sandbox + params)
 
 
