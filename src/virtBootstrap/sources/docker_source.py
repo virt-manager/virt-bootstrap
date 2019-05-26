@@ -168,7 +168,6 @@ class DockerSource(object):
                 else:
                     raise ValueError('Blob %s does not exist.' % path)
 
-
     def parse_output(self, proc):
         """
         Read stdout from skopeo's process asynchconosly.
