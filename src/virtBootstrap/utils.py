@@ -522,6 +522,28 @@ def write_progress(prog):
     sys.stdout.flush()
 
 
+def is_selinux_enabled():
+    """
+    Returns True if SElinux is enabled, False otherwise.
+    """
+    try:
+        subprocess.check_call(['selinuxenabled'])
+    except Exception:
+        return False
+    return True
+
+
+def chcon(path, context, flags="-Rt"):
+    """
+    Change file SELinux security context
+    """
+    try:
+        subprocess.check_call(['chcon', flags, context, path])
+    except Exception:
+        return False
+    return True
+
+
 # The implementation for remapping ownership of all files inside a
 # container's rootfs is inspired by the tool uidmapshift:
 #

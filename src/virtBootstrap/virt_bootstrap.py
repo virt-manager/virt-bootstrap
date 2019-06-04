@@ -135,6 +135,13 @@ def bootstrap(uri, dest,
         logger.error("No write permissions on destination path '%s'", dest)
         sys.exit(1)
 
+    if utils.is_selinux_enabled():
+        logger.debug("Setting file SELinux security context")
+        if not utils.chcon(dest, "container_file_t"):
+            logger.error("Can't set SElinux context on destination path '%s'",
+                         dest)
+            sys.exit(1)
+
     if uid_map is None:
         uid_map = []
 
