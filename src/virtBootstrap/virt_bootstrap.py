@@ -121,10 +121,11 @@ def bootstrap(uri, dest,
 
     uri = urlparse(uri)
     source = get_source(uri.scheme or 'file')
+    dest = os.path.abspath(dest)
 
     if not os.path.exists(dest):
         os.makedirs(dest)
-    elif os.path.abspath(dest) == "/":  # Don't overwrite root
+    elif dest == "/":  # Don't overwrite root
         logger.error("Unpack to root directory is not allowed")
         sys.exit(1)
     elif not os.path.isdir(dest):  # Show error if not directory
