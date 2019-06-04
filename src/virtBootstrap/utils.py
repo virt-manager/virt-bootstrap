@@ -269,6 +269,7 @@ def safe_untar(src, dest):
     Extract tarball within LXC container for safety.
     """
     virt_sandbox = ['virt-sandbox',
+                    '--security=inherit',
                     '-c', LIBVIRT_CONN,
                     '--name=bootstrap_%s' % os.getpid(),
                     '-m', 'host-bind:/mnt=' + dest]  # Bind destination folder
