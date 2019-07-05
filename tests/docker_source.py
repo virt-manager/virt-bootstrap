@@ -156,7 +156,7 @@ class TestDirDockerSource(ImageAccessor):
         Ensures that the root password is set correctly.
         """
         layers = CreateLayers(self.tar_file, self.rootfs_tree, self.tar_dir)
-        self.root_password = "My secret root password"
+        self.root_password = "file:tests/password.txt"
         self.call_bootstrap(layers.generate_manifest())
         self.validate_shadow_file()
 
@@ -282,7 +282,7 @@ class TestQcow2DockerSource(Qcow2ImageAccessor):
         """
         Ensures that the root password is set in the last qcow2 image.
         """
-        self.root_password = "My secret password"
+        self.root_password = "file:tests/password.txt"
         layers_rootfs = self.call_bootstrap()
 
         g = guestfs.GuestFS(python_return_dict=True)

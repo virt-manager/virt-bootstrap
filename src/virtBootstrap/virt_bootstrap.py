@@ -148,6 +148,20 @@ def bootstrap(uri, dest,
     if gid_map is None:
         gid_map = []
 
+
+    if root_password:
+        if root_password.startswith('file:'):
+            root_password_file = root_password[len('file:'):]
+            logger.debug("Reading root password from file %s" %
+                         root_password_file)
+            with open(root_password_file) as pwdfile:
+                root_password = pwdfile.readline().rstrip("\n\r")
+        else:
+            logger.warning(_("Passing the root_password directly via command "
+                             "line is deprecated and using the 'file:' "
+                             "selector is the recommended way to use this "
+                             "option."))
+
     source(uri=uri,
            fmt=fmt,
            username=username,

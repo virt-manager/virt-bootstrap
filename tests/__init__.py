@@ -334,9 +334,15 @@ class ImageAccessor(unittest.TestCase):
         Note: For simplicity we assume that the first line of /etc/shadow
         contains the root entry.
         """
+        root_password = self.root_password
+        if root_password and root_password.startswith('file:'):
+            root_password_file = root_password[len('file:'):]
+            with open(root_password_file) as pwdfile:
+                root_password = pwdfile.readline().rstrip("\n\r")
+
         self.assertTrue(
             passlib.hosts.linux_context.verify(
-                self.root_password,
+                root_password,
                 shadow_content[0].split(':')[1]
             ),
             "Invalid root password hash."

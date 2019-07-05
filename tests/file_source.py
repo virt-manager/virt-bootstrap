@@ -74,7 +74,7 @@ class TestDirFileSource(ImageAccessor):
         Ensures that the root password is set correctly when FileSource is used
         with fmt='dir'.
         """
-        self.root_password = 'my secret root password'
+        self.root_password = 'file:tests/password.txt'
         self.call_bootstrap()
         self.validate_shadow_file()
 
@@ -120,7 +120,7 @@ class TestQcow2FileSource(Qcow2ImageAccessor):
         """
         Ensures that the root password is set in the last qcow2 image.
         """
-        self.root_password = "My secret password"
+        self.root_password = "file:tests/password.txt"
         self.call_bootstrap()
         self.check_image = self.validate_shadow_file_in_image
         self.check_qcow2_images(self.get_image_path(1))

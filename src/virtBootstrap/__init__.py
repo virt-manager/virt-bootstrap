@@ -152,7 +152,7 @@ Usage Examples
     virtBootstrap.bootstrap(
         uri='docker://fedora',
         dest='/tmp/foo',
-        root_password='secret'
+        root_password='file:/tmp/secret'
     )
 
     # Convert Ubuntu container image to qcow2 disk image using backing chains

@@ -52,10 +52,13 @@ temporary directory used by virt-bootstrap or default C</tmp> will be used.
 Output format of the root file system. Possible values are B<dir>
 (default) and B<qcow2>.
 
-=item B<--root-password> ROOT_PASSWORD
+=item B<--root-password> SELECTOR
 
-This argument will generate hash from B<ROOT_PASSWORD> and insert the
-hashed value into C</etc/shadow> in the created root file system.
+This argument will generate hash from B<ROOT_PASSWORD>, gotten from
+the B<SELECTOR> field, and insert the hashed value into C</etc/shadow>
+in the created root file system.
+
+Note that B<SELECTOR> can be one of the following: "file:".
 
 If the output format is C<qcow2> these modifications are applied in
 additional qcow2 disk image.
@@ -192,14 +195,15 @@ B<0>-B<9> to B<1000>-B<1009> and B<500>-B<509> to B<1500>-B<1509>
 =item Set root password
 
     $ virt_bootstrap.py docker://opensuse /tmp/foo \
-      --root-password secret
+      --root-password file:/tmp/secret
 
 The above command will download the C<opensuse> container image and
 extract the root file system to C</tmp/foo>. Then it will generate hash
-of the string C<secret> and insert it into C</tmp/foo/etc/shadow> file.
+of the password present in C</tmp/secret> file and insert it into
+C</tmp/foo/etc/shadow> file.
 
     $ virt_bootstrap.py docker://opensuse /tmp/foo \
-      --root-password secret \
+      --root-password file:/tmp/secret \
       -f qcow2
 
 Similarly for B<qcow2> format the container image will be downloaded and
