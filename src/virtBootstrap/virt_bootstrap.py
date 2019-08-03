@@ -151,7 +151,7 @@ def bootstrap(uri, dest,
     if root_password:
         if root_password.startswith('file:'):
             root_password_file = root_password[len('file:'):]
-            logger.debug("Reading root password from file %s" %
+            logger.debug("Reading root password from file %s",
                          root_password_file)
             with open(root_password_file) as pwdfile:
                 root_password = pwdfile.readline().rstrip("\n\r")
