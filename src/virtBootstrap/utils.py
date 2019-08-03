@@ -35,6 +35,7 @@ import logging
 import shutil
 
 import passlib.hosts
+from virtBootstrap import whiteout
 
 try:
     import guestfs
@@ -279,8 +280,12 @@ def safe_untar(src, dest):
     # Note: Here we use --absolute-names flag to get around the error message
     # "Cannot open: Permission denied" when symlynks are extracted, with the
     # qemu:/// driver. This flag must not be used outside virt-sandbox.
-    params = ['--', '/bin/tar', 'xf', src, '-C', '/mnt', '--exclude', 'dev/*',
-              '--overwrite', '--absolute-names']
+    params = ['--', '/bin/tar', 'xf', src,
+              '-C', '/mnt',
+              '--exclude', 'dev/*',
+              '--exclude', '*/%s*' % whiteout.PREFIX,
+              '--overwrite',
+              '--absolute-names']
     # Preserve file attributes following the specification in
     # https://github.com/opencontainers/image-spec/blob/master/layer.md
     if os.geteuid() == 0:
@@ -340,6 +345,9 @@ def untar_layers(layers_list, dest_dir, progress):
     for index, layer in enumerate(layers_list):
         tar_file, tar_size = layer
         log_layer_extract(tar_file, tar_size, index + 1, nlayers, progress)
+
+        # Apply whiteout changes with respect to parent layers
+        whiteout.apply_whiteout_changes(tar_file, dest_dir)
 
         # Extract layer tarball into destination directory
         safe_untar(tar_file, dest_dir)
