@@ -148,7 +148,6 @@ def bootstrap(uri, dest,
     if gid_map is None:
         gid_map = []
 
-
     if root_password:
         if root_password.startswith('file:'):
             root_password_file = root_password[len('file:'):]
